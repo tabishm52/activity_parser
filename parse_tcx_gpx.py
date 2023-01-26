@@ -89,9 +89,12 @@ def parse_tcx(file):
                         for element in root.iter('{*}Lap'))
     laps = cleanup_xml_dataframe(laps, 'StartTime')
 
-    extra = {}
-    for element in root.iter('{*}Creator'):
-        extra.update(dict(extract_xml_fields(element)))
+    # Drop all Laps from the XML data so they don't show up in extra
+    for element in root.iterfind('.//{*}Lap'):
+        element.getparent().remove(element)
+
+    extra = dict(extract_xml_fields(root))
+    extra.pop('schemaLocation', None)
 
     return records, laps, extra
 
@@ -131,9 +134,7 @@ def parse_gpx(file):
     for element in root.iterfind('.//{*}trkseg'):
         element.getparent().remove(element)
 
-    extra = {}
-    for element in root.iter():
-        extra.update(dict(extract_xml_fields(element)))
+    extra = dict(extract_xml_fields(root))
     extra.pop('schemaLocation', None)
 
     return records, pd.DataFrame(), extra
