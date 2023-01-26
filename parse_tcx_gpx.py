@@ -12,7 +12,7 @@ def extract_xml_fields(element):
         for key, value in el.attrib.items():
             localname = etree.QName(key).localname
             if localname != 'type':
-                yield (localname, value)
+                yield localname, value
 
         # In a TCX file, some values are buried in a 'Value' element
         if el.text is None or el.text.isspace():
@@ -21,7 +21,7 @@ def extract_xml_fields(element):
                 parent_localname = etree.QName(el).localname
                 child_localname = etree.QName(child).localname
                 if child_localname == 'Value':
-                    yield (parent_localname, child.text)
+                    yield parent_localname, child.text
             except StopIteration:
                 pass
 
@@ -29,7 +29,7 @@ def extract_xml_fields(element):
         else:
             localname = etree.QName(el).localname
             if localname != 'Value':
-                yield (localname, el.text)
+                yield localname, el.text
 
 
 def cleanup_xml_dataframe(df, time_col):
