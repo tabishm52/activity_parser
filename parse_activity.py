@@ -67,7 +67,6 @@ class ActivityParser():
             'atemp',
         ]
 
-        # The canonical record names that we map TCX and GPX names to
         self.fit_records_mapper = {
             'position_lat': 'latitude',
             'position_long': 'longitude',
@@ -195,11 +194,11 @@ class ActivityParser():
               from the file name).
 
         Returns:
-            A tuple of (records, laps, extra)
+            A tuple of (records, laps, extra).
 
-            records: Time-indexed DataFrame of sensor data from the activity
-            laps: DataFrame of lap information from the activity
-            extra: Dict of selected additional information from the activity
+            records: Time-indexed DataFrame of sensor data from the activity.
+            laps: DataFrame of lap information from the activity.
+            extra: Dict of selected additional information from the activity.
         """
 
         if ext is None:

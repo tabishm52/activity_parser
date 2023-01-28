@@ -9,12 +9,14 @@ import fitdecode
 
 
 def copy_fit_frames(fit_file):
-    """Copies FIT data from a file-like object into a list of frames."""
+    """Yields FIT data frames from a file-like object."""
 
-    fit = fitdecode.FitReader(fit_file,
-                              processor=fitdecode.StandardUnitsDataProcessor())
-    return [f for f in fit if f.frame_type == fitdecode.FIT_FRAME_DATA and
-                              f.mesg_type is not None]
+    processor = fitdecode.StandardUnitsDataProcessor()
+    fit = fitdecode.FitReader(fit_file, processor=processor)
+
+    for f in fit:
+        if f.frame_type == fitdecode.FIT_FRAME_DATA and f.mesg_type is not None:
+            yield f
 
 
 def extract_fit_dicts(frames, names):
@@ -32,21 +34,21 @@ def extract_fit_dicts(frames, names):
 def parse_fit(file):
     """Loads a FIT activity into Pandas DataFrames.
 
-    FIT data fields that are marked as 'unknown' by fitdecode are dropped during
-    import. Assumes that the FIT file is all one activity, i.e. "chained" FIT
-    files will be merged into one set of return values, possibly over-writing
-    some fields.
+    FIT frames and data fields that are marked as 'unknown' by fitdecode are
+    dropped during import. Assumes that the FIT file is all one activity, i.e.
+    "chained" FIT files will be merged into one set of return values, possibly
+    over-writing some fields.
 
     Args:
         file: File-like or path-like object. A path-like argument ending in
           '.gz' will be unzipped before processing.
 
     Returns:
-        A tuple of (records, laps, extra)
+        A tuple of (records, laps, extra).
 
-        records: Time-indexed DataFrame of sensor data recorded during activity
-        laps: DataFrame of lap information from the activity
-        extra: Dict of selected additional information from the activity
+        records: Time-indexed DataFrame of sensor data from the activity.
+        laps: DataFrame of lap information from the activity.
+        extra: Dict of selected additional information from the activity.
     """
 
     try:
@@ -58,12 +60,12 @@ def parse_fit(file):
     if is_path:
         if ext.lower() == '.gz':
             with gzip.open(file) as fit_file:
-                frames = copy_fit_frames(fit_file)
+                frames = list(copy_fit_frames(fit_file))
         else:
             with open(file, 'rb') as fit_file:
-                frames = copy_fit_frames(fit_file)
+                frames = list(copy_fit_frames(fit_file))
     else:
-        frames = copy_fit_frames(file)
+        frames = list(copy_fit_frames(file))
 
     # Note FIT files occasionally have duplicate timestamps, just drop those
     records = pd.DataFrame(extract_fit_dicts(frames, ['record']))
@@ -72,9 +74,6 @@ def parse_fit(file):
 
     laps = pd.DataFrame(extract_fit_dicts(frames, ['lap']))
 
-    # This is a bit clumsy - if there is more than one frame of a given type or
-    # fields with the same name across frame types, then you'll get whichever
-    # value appears last in the FIT file
     extra = {}
     extra_names = ['file_id', 'sport', 'session', 'activity']
     for d in extract_fit_dicts(frames, extra_names):

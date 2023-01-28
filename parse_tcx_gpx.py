@@ -5,7 +5,7 @@ import pandas as pd
 
 
 def extract_xml_fields(element):
-    """Yields (name, value) data points recursively through an XML element."""
+    """Yields (name, value) pairs recursively through an XML element."""
 
     for el in element.iter():
         # Some (name, value) pairs are stored as XML attributes
@@ -33,7 +33,7 @@ def extract_xml_fields(element):
 
 
 def cleanup_xml_dataframe(df, time_col):
-    """Common post-processing for DataFrames extracted from an XML element."""
+    """Common post-processing for DataFrames extracted from XML elements."""
 
     df = df.convert_dtypes().astype(float, errors='ignore')
     df[time_col] = pd.to_datetime(df[time_col])
@@ -66,9 +66,9 @@ def parse_tcx(file):
     Returns:
         A tuple of (records, laps, extra)
 
-        records: Time-indexed DataFrame of sensor data recorded during activity
-        laps: DataFrame of lap information from the activity
-        extra: Dict of selected additional information from the activity
+        records: Time-indexed DataFrame of sensor data from the activity.
+        laps: DataFrame of lap information from the activity.
+        extra: Dict of additional information from the activity.
     """
 
     # lxml takes care of identifying and handling a gzipped file
@@ -81,7 +81,6 @@ def parse_tcx(file):
     records = cleanup_xml_dataframe(records, 'Time').set_index('Time')
     records = records[~records.index.duplicated()]
 
-    # Drop all Trackpoints from the XML data so they don't show up in lap data
     for element in root.iterfind('.//{*}Track'):
         element.getparent().remove(element)
 
@@ -89,7 +88,6 @@ def parse_tcx(file):
                         for element in root.iter('{*}Lap'))
     laps = cleanup_xml_dataframe(laps, 'StartTime')
 
-    # Drop all Laps from the XML data so they don't show up in extra
     for element in root.iterfind('.//{*}Lap'):
         element.getparent().remove(element)
 
@@ -111,11 +109,11 @@ def parse_gpx(file):
           '.gz' will be transparently unzipped before processing.
 
     Returns:
-        A tuple of (records, laps, extra)
+        A tuple of (records, laps, extra).
 
-        records: Time-indexed DataFrame of sensor data recorded during activity
-        laps: An empty Pandas DataFrame provided for compatibility
-        extra: Dict of additional information from the activity
+        records: Time-indexed DataFrame of sensor data from the activity.
+        laps: An empty Pandas DataFrame provided for compatibility.
+        extra: Dict of additional information from the activity.
     """
 
     # Note there is a 'gpxpy' library that provides comprehensive handling of
