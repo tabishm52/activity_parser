@@ -1,5 +1,6 @@
 """Functions for parsing FIT files into Pandas DataFrames."""
 
+import collections
 import gzip
 import os
 
@@ -12,22 +13,23 @@ def copy_fit_frames(fit_file):
     """Yields FIT data frames from a file-like object."""
 
     processor = fitdecode.StandardUnitsDataProcessor()
-    fit = fitdecode.FitReader(fit_file, processor=processor)
+    for frame in fitdecode.FitReader(fit_file, processor=processor):
+        if (
+            frame.frame_type == fitdecode.FIT_FRAME_DATA
+            and frame.mesg_type is not None
+        ):
+            yield frame
 
-    for f in fit:
-        if f.frame_type == fitdecode.FIT_FRAME_DATA and f.mesg_type is not None:
-            yield f
 
+def extract_fit_dicts(frames, name):
+    """Yields dicts of frame data from FIT frames of a given name."""
 
-def extract_fit_dicts(frames, names):
-    """Yields dicts of frame data from FIT frames of given names."""
-
-    for f in frames:
-        if f.name in names:
+    for frame in frames:
+        if frame.name == name:
             yield dict(
-                (d.name, d.value)
-                for d in f.fields
-                if d.field is not None
+                (field.name, field.value)
+                for field in frame.fields
+                if field.field is not None
             )
 
 
@@ -36,8 +38,7 @@ def parse_fit(file):
 
     FIT frames and data fields that are marked as 'unknown' by fitdecode are
     dropped during import. Assumes that the FIT file is all one activity, i.e.
-    "chained" FIT files will be merged into one set of return values, possibly
-    over-writing some fields.
+    chained FIT files will be merged into one set of return values.
 
     Args:
         file: File-like or path-like object. A path-like argument ending in
@@ -48,7 +49,7 @@ def parse_fit(file):
 
         records: Time-indexed DataFrame of sensor data from the activity.
         laps: DataFrame of lap information from the activity.
-        extra: Dict of selected additional information from the activity.
+        extra: Dict of additional information from the activity.
     """
 
     try:
@@ -68,15 +69,21 @@ def parse_fit(file):
         frames = list(copy_fit_frames(file))
 
     # Note FIT files occasionally have duplicate timestamps, just drop those
-    records = pd.DataFrame(extract_fit_dicts(frames, ['record']))
+    records = pd.DataFrame(extract_fit_dicts(frames, 'record'))
     records = records.set_index('timestamp')
     records = records[~records.index.duplicated()]
 
-    laps = pd.DataFrame(extract_fit_dicts(frames, ['lap']))
+    laps = pd.DataFrame(extract_fit_dicts(frames, 'lap'))
+
+    names = collections.Counter(frame.name for frame in frames)
+    names.pop('record', None)
+    names.pop('lap', None)
 
     extra = {}
-    extra_names = ['file_id', 'sport', 'session', 'activity']
-    for d in extract_fit_dicts(frames, extra_names):
-        extra.update(d)
+    for name, count in names.items():
+        if count == 1:
+            extra[name] = next(extract_fit_dicts(frames, name))
+        else:
+            extra[name] = pd.DataFrame(extract_fit_dicts(frames, name))
 
     return records, laps, extra
