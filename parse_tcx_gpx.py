@@ -81,14 +81,14 @@ def parse_tcx(file):
     records = cleanup_xml_dataframe(records, 'Time').set_index('Time')
     records = records[~records.index.duplicated()]
 
-    for element in root.iterfind('.//{*}Track'):
+    for element in root.iter('{*}Track'):
         element.getparent().remove(element)
 
     laps = pd.DataFrame(dict(extract_xml_fields(element))
                         for element in root.iter('{*}Lap'))
     laps = cleanup_xml_dataframe(laps, 'StartTime')
 
-    for element in root.iterfind('.//{*}Lap'):
+    for element in root.iter('{*}Lap'):
         element.getparent().remove(element)
 
     extra = dict(extract_xml_fields(root))
@@ -102,7 +102,7 @@ def parse_gpx(file):
 
     Assumes that the GPX file is all one activity. Files with multiple tracks
     will be merged into one set of return values, possibly over-writing some
-    fields.
+    fields. Waypoints and routes in the GPX file are ignored.
 
     Args:
         file: File-like or path-like object. A path-like argument ending in
@@ -129,7 +129,7 @@ def parse_gpx(file):
     records = cleanup_xml_dataframe(records, 'time').set_index('time')
     records = records[~records.index.duplicated()]
 
-    for element in root.iterfind('.//{*}trkseg'):
+    for element in root.iter('{*}trkseg', '{*}rte', '{*}wpt'):
         element.getparent().remove(element)
 
     extra = dict(extract_xml_fields(root))
