@@ -1,20 +1,29 @@
 """Class for parsing FIT, TCX and GPX files into Pandas DataFrames."""
 
 import os
+from collections.abc import Mapping, Sequence
+from os import PathLike
+from typing import Any
+
+import pandas as pd
 
 from .parse_fit_file import parse_fit
 from .parse_tcx_gpx import parse_tcx
 from .parse_tcx_gpx import parse_gpx
 
 
-def select_and_rename_cols(df, selector, mapper):
-    """Selects and renames columns from a DataFrame."""
+def select_and_rename_cols(
+    df: pd.DataFrame,
+    selector: Sequence[str],
+    mapper: Mapping[str, str],
+) -> pd.DataFrame:
+    """Select and rename columns from a DataFrame."""
 
     cols = [col for col in selector if col in df.columns]
-    return df.loc[:,cols].rename(columns=mapper)
+    return df.loc[:, cols].rename(columns=mapper)
 
 
-class ActivityParser():
+class ActivityParser:
     """Parser for FIT, GPX and TCX files.
 
     Each instance of this class is a parser object that can be used to import
@@ -24,8 +33,8 @@ class ActivityParser():
     types.
     """
 
-    def __init__(self):
-        """Initializes 'selector' and 'mapper' attributes to defaults."""
+    def __init__(self) -> None:
+        """Initialize selector and mapper attributes to defaults."""
 
         # 'Selectors' specify the list and order of columns to be copied from
         # each DataFrame (records and laps for each file type), and 'mappers'
@@ -177,60 +186,77 @@ class ActivityParser():
             'Calories': 'total_calories',
         }
 
-    def parse(self, file, ext=None):
+    def parse(
+        self,
+        file: str | PathLike[str] | Any,
+        ext: str | None = None,
+    ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
         """Loads a FIT, TCX or GPX activity into Pandas DataFrames.
 
-        During import, column names in the 'records' and 'laps' DataFrames are
+        During import, column names in the ``records`` and ``laps`` DataFrames are
         normalized into a canonical set of names. Note this function does not
         guarantee that all canonical columns appear in the output, it only
         renames the columns that are present in the activity file.
 
-        Arguments:
+        Args:
             file: File-like or path-like object. A path-like argument ending in
-              '.gz' will be unzipped before processing.
-            ext: String of value 'FIT', 'TCX' or 'GPX' that specifies the file
-              type. Must be provided if 'file' is a file-like object. Optional
-              if 'file' is a path-like object (the file type will be inferred
-              from the file name).
+                '.gz' will be unzipped before processing.
+            ext: String of value ``FIT``, ``TCX``, or ``GPX`` that specifies
+                the file type. Must be provided if ``file`` is a file-like
+                object. Optional if ``file`` is a path-like object (the file
+                type will be inferred from the file name).
 
         Returns:
-            A tuple of (records, laps, extra).
-
-            records: Time-indexed DataFrame of sensor data from the activity.
-            laps: DataFrame of lap information from the activity.
-            extra: Dict of selected additional information from the activity.
+            Tuple containing records, laps, and selected extra metadata.
         """
 
         if ext is None:
-            root, ext = os.path.splitext(file)
+            try:
+                root, ext = os.path.splitext(file)
+            except TypeError as exc:
+                raise ValueError(
+                    'ext must be provided when file is a file-like object.'
+                ) from exc
             if ext.lower() == '.gz':
                 _, ext = os.path.splitext(root)
 
-        if ext.lower() in ['.fit', 'fit']:
+        ext_lower = ext.lower()
+
+        if ext_lower in ['.fit', 'fit']:
             records, laps, extra = parse_fit(file)
-            records = select_and_rename_cols(records,
-                                             self.fit_records_selector,
-                                             self.fit_records_mapper)
+            records = select_and_rename_cols(
+                records,
+                self.fit_records_selector,
+                self.fit_records_mapper,
+            )
             records.rename_axis('time', inplace=True)
-            laps = select_and_rename_cols(laps,
-                                          self.fit_laps_selector,
-                                          self.fit_laps_mapper)
+            laps = select_and_rename_cols(
+                laps,
+                self.fit_laps_selector,
+                self.fit_laps_mapper,
+            )
 
-        elif ext.lower() in ['.tcx', 'tcx']:
+        elif ext_lower in ['.tcx', 'tcx']:
             records, laps, extra = parse_tcx(file)
-            records = select_and_rename_cols(records,
-                                             self.tcx_records_selector,
-                                             self.tcx_records_mapper)
+            records = select_and_rename_cols(
+                records,
+                self.tcx_records_selector,
+                self.tcx_records_mapper,
+            )
             records.rename_axis('time', inplace=True)
-            laps = select_and_rename_cols(laps,
-                                          self.tcx_laps_selector,
-                                          self.tcx_laps_mapper)
+            laps = select_and_rename_cols(
+                laps,
+                self.tcx_laps_selector,
+                self.tcx_laps_mapper,
+            )
 
-        elif ext.lower() in ['.gpx', 'gpx']:
+        elif ext_lower in ['.gpx', 'gpx']:
             records, laps, extra = parse_gpx(file)
-            records = select_and_rename_cols(records,
-                                             self.gpx_records_selector,
-                                             self.gpx_records_mapper)
+            records = select_and_rename_cols(
+                records,
+                self.gpx_records_selector,
+                self.gpx_records_mapper,
+            )
             records.rename_axis('time', inplace=True)
             # Note GPX files have no lap information
 

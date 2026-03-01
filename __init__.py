@@ -1,13 +1,13 @@
 """Parser for loading FIT, TCX and GPX files into Pandas DataFrames.
 
-Provides a parser object for reading (optionally gzipped) FIT, TCX and GPX
-activity files and converting them into Pandas DataFrames. During import, column
-names extracted from the activity files are normalized into a canonical
-set of column names in the output DataFrames.
+Provides a parser object for reading (optionally gzipped) FIT, TCX, and GPX
+activity files and converting them into Pandas DataFrames. During import,
+column names extracted from activity files are normalized into a canonical set
+of output column names.
 
 Usage:
 
-Create a new instance of the ActivityFinder class to be reused for subsequent
+Create a new instance of the ActivityParser class to be reused for subsequent
 parsing of activity files:
 
 >>> import activity_parser

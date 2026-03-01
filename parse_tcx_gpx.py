@@ -1,10 +1,14 @@
 """Functions for parsing TCX and GPX files into Pandas DataFrames."""
 
+from collections.abc import Iterator
+from os import PathLike
+from typing import Any
+
 from lxml import etree
 import pandas as pd
 
 
-def extract_xml_fields(element):
+def extract_xml_fields(element: Any) -> Iterator[tuple[str, Any]]:
     """Yields (name, value) pairs recursively through an XML element."""
 
     for el in element.iter():
@@ -32,7 +36,7 @@ def extract_xml_fields(element):
                 yield localname, el.text
 
 
-def cleanup_xml_dataframe(df, time_col):
+def cleanup_xml_dataframe(df: pd.DataFrame, time_col: str) -> pd.DataFrame:
     """Common post-processing for DataFrames extracted from XML elements."""
 
     df = df.convert_dtypes().astype(float, errors='ignore')
@@ -52,7 +56,9 @@ def cleanup_xml_dataframe(df, time_col):
     return df
 
 
-def parse_tcx(file):
+def parse_tcx(
+    file: str | PathLike[str] | Any,
+) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     """Loads a TCX activity into Pandas DataFrames.
 
     Assumes that the TCX file is all one activity. Files with multiple
@@ -61,14 +67,10 @@ def parse_tcx(file):
 
     Args:
         file: File-like or path-like object. A path-like argument ending in
-          '.gz' will be transparently unzipped before processing.
+            '.gz' will be transparently unzipped before processing.
 
     Returns:
-        A tuple of (records, laps, extra)
-
-        records: Time-indexed DataFrame of sensor data from the activity.
-        laps: DataFrame of lap information from the activity.
-        extra: Dict of additional information from the activity.
+        Tuple containing records, laps, and additional metadata.
     """
 
     # lxml takes care of identifying and handling a gzipped file
@@ -76,16 +78,20 @@ def parse_tcx(file):
     root = etree.parse(file, parser).getroot()
 
     # TCX files occasionally have duplicate timestamps, just drop those
-    records = pd.DataFrame(dict(extract_xml_fields(element))
-                           for element in root.iter('{*}Trackpoint'))
+    records = pd.DataFrame(
+        dict(extract_xml_fields(element))
+        for element in root.iter('{*}Trackpoint')
+    )
     records = cleanup_xml_dataframe(records, 'Time').set_index('Time')
     records = records[~records.index.duplicated()]
 
     for element in root.iter('{*}Track'):
         element.getparent().remove(element)
 
-    laps = pd.DataFrame(dict(extract_xml_fields(element))
-                        for element in root.iter('{*}Lap'))
+    laps = pd.DataFrame(
+        dict(extract_xml_fields(element))
+        for element in root.iter('{*}Lap')
+    )
     laps = cleanup_xml_dataframe(laps, 'StartTime')
 
     for element in root.iter('{*}Lap'):
@@ -97,7 +103,9 @@ def parse_tcx(file):
     return records, laps, extra
 
 
-def parse_gpx(file):
+def parse_gpx(
+    file: str | PathLike[str] | Any,
+) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     """Loads a GPX activity into a Pandas DataFrame.
 
     Assumes that the GPX file is all one activity. Files with multiple tracks
@@ -106,14 +114,11 @@ def parse_gpx(file):
 
     Args:
         file: File-like or path-like object. A path-like argument ending in
-          '.gz' will be transparently unzipped before processing.
+            '.gz' will be transparently unzipped before processing.
 
     Returns:
-        A tuple of (records, laps, extra).
-
-        records: Time-indexed DataFrame of sensor data from the activity.
-        laps: An empty Pandas DataFrame provided for compatibility.
-        extra: Dict of additional information from the activity.
+        Tuple containing records, laps, and additional metadata. Note GPX files
+        don't have lap information, so the laps DataFrame will be empty.
     """
 
     # Note there is a 'gpxpy' library that provides comprehensive handling of
@@ -124,8 +129,10 @@ def parse_gpx(file):
     parser = etree.XMLParser(recover=True)
     root = etree.parse(file, parser).getroot()
 
-    records = pd.DataFrame(dict(extract_xml_fields(element))
-                           for element in root.iter('{*}trkpt'))
+    records = pd.DataFrame(
+        dict(extract_xml_fields(element))
+        for element in root.iter('{*}trkpt')
+    )
     records = cleanup_xml_dataframe(records, 'time').set_index('time')
     records = records[~records.index.duplicated()]
 

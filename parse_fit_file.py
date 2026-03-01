@@ -3,13 +3,15 @@
 import collections
 import gzip
 import os
+from collections.abc import Iterable, Iterator
+from typing import Any, BinaryIO
 
 import pandas as pd
 
 import fitdecode
 
 
-def copy_fit_frames(fit_file):
+def copy_fit_frames(fit_file: BinaryIO) -> Iterator[Any]:
     """Yields FIT data frames from a file-like object."""
 
     processor = fitdecode.StandardUnitsDataProcessor()
@@ -21,7 +23,10 @@ def copy_fit_frames(fit_file):
             yield frame
 
 
-def extract_fit_dicts(frames, name):
+def extract_fit_dicts(
+    frames: Iterable[Any],
+    name: str,
+) -> Iterator[dict[str, Any]]:
     """Yields dicts of frame data from FIT frames of a given name."""
 
     for frame in frames:
@@ -33,7 +38,9 @@ def extract_fit_dicts(frames, name):
             )
 
 
-def parse_fit(file):
+def parse_fit(
+    file: str | os.PathLike[str] | BinaryIO,
+) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     """Loads a FIT activity into Pandas DataFrames.
 
     FIT frames and data fields that are marked as 'unknown' by fitdecode are
@@ -42,14 +49,10 @@ def parse_fit(file):
 
     Args:
         file: File-like or path-like object. A path-like argument ending in
-          '.gz' will be unzipped before processing.
+            '.gz' will be unzipped before processing.
 
     Returns:
-        A tuple of (records, laps, extra).
-
-        records: Time-indexed DataFrame of sensor data from the activity.
-        laps: DataFrame of lap information from the activity.
-        extra: Dict of additional information from the activity.
+        Tuple containing records, laps, and additional metadata.
     """
 
     try:
