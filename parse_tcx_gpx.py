@@ -1,5 +1,6 @@
 """Functions for parsing TCX and GPX files into Pandas DataFrames."""
 
+import warnings
 from collections.abc import Iterator
 from os import PathLike
 from typing import Any
@@ -39,7 +40,21 @@ def extract_xml_fields(element: Any) -> Iterator[tuple[str, Any]]:
 def cleanup_xml_dataframe(df: pd.DataFrame, time_col: str) -> pd.DataFrame:
     """Common post-processing for DataFrames extracted from XML elements."""
 
-    df = df.convert_dtypes().astype(float, errors='ignore')
+    df = df.convert_dtypes()
+
+    for col in df.columns:
+        if col == time_col:
+            continue
+
+        values = df[col]
+        non_null = values.notna().sum()
+        if non_null == 0:
+            continue
+
+        numeric_values = pd.to_numeric(values, errors='coerce')
+        if numeric_values.notna().sum() == non_null:
+            df[col] = numeric_values
+
     if time_col in df.columns:
         df[time_col] = pd.to_datetime(df[time_col], errors='coerce')
     else:
@@ -79,6 +94,12 @@ def parse_tcx(
     # lxml takes care of identifying and handling a gzipped file
     parser = etree.XMLParser(recover=True)
     root = etree.parse(file, parser).getroot()
+    if parser.error_log:
+        warnings.warn(
+            f'TCX parse recovered with {len(parser.error_log)} XML errors.',
+            RuntimeWarning,
+            stacklevel=2,
+        )
 
     # TCX files occasionally have duplicate timestamps, just drop those
     records = pd.DataFrame(
@@ -131,6 +152,12 @@ def parse_gpx(
 
     parser = etree.XMLParser(recover=True)
     root = etree.parse(file, parser).getroot()
+    if parser.error_log:
+        warnings.warn(
+            f'GPX parse recovered with {len(parser.error_log)} XML errors.',
+            RuntimeWarning,
+            stacklevel=2,
+        )
 
     records = pd.DataFrame(
         dict(extract_xml_fields(element))
