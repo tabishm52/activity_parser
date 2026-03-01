@@ -40,7 +40,10 @@ def cleanup_xml_dataframe(df: pd.DataFrame, time_col: str) -> pd.DataFrame:
     """Common post-processing for DataFrames extracted from XML elements."""
 
     df = df.convert_dtypes().astype(float, errors='ignore')
-    df[time_col] = pd.to_datetime(df[time_col])
+    if time_col in df.columns:
+        df[time_col] = pd.to_datetime(df[time_col], errors='coerce')
+    else:
+        df[time_col] = pd.NaT
 
     # Conversion from meters and m/s to km and kph is done to align with
     # processing done by fitdecode.StandardUnitsDataProcessor. Note these column

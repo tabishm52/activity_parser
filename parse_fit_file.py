@@ -73,7 +73,10 @@ def parse_fit(
 
     # Note FIT files occasionally have duplicate timestamps, just drop those
     records = pd.DataFrame(extract_fit_dicts(frames, 'record'))
-    records = records.set_index('timestamp')
+    if 'timestamp' in records.columns:
+        records = records.set_index('timestamp')
+    else:
+        records.index = pd.Index(records.index, name='timestamp')
     records = records[~records.index.duplicated()]
 
     laps = pd.DataFrame(extract_fit_dicts(frames, 'lap'))
