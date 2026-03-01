@@ -3,7 +3,7 @@
 import os
 from collections.abc import Mapping, Sequence
 from os import PathLike
-from typing import Any
+from typing import IO, Any
 
 import pandas as pd
 
@@ -51,8 +51,15 @@ class ActivityParser:
     types.
     """
 
-    def __init__(self) -> None:
-        """Initialize selector and mapper attributes to defaults."""
+    def __init__(self, strict_xml: bool = False) -> None:
+        """Initialize parser settings, selectors, and mappers.
+
+        Args:
+            strict_xml: If True, TCX/GPX XML parsing fails on malformed input.
+                If False, parser recovery is enabled.
+        """
+
+        self.strict_xml = strict_xml
 
         # 'Selectors' specify the list and order of columns to be copied from
         # each DataFrame (records and laps for each file type), and 'mappers'
@@ -206,7 +213,7 @@ class ActivityParser:
 
     def parse(
         self,
-        file: str | PathLike[str] | Any,
+        file: str | PathLike[str] | IO[str] | IO[bytes],
         ext: str | None = None,
     ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
         """Loads a FIT, TCX or GPX activity into Pandas DataFrames.
@@ -252,7 +259,7 @@ class ActivityParser:
             )
 
         elif ext_normalized == 'tcx':
-            records, laps, extra = parse_tcx(file)
+            records, laps, extra = parse_tcx(file, strict_xml=self.strict_xml)
             records = select_and_rename_cols(
                 records,
                 self.tcx_records_selector,
@@ -266,7 +273,7 @@ class ActivityParser:
             )
 
         elif ext_normalized == 'gpx':
-            records, laps, extra = parse_gpx(file)
+            records, laps, extra = parse_gpx(file, strict_xml=self.strict_xml)
             records = select_and_rename_cols(
                 records,
                 self.gpx_records_selector,

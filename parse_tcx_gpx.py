@@ -1,12 +1,46 @@
 """Functions for parsing TCX and GPX files into Pandas DataFrames."""
 
-import warnings
 from collections.abc import Iterator
 from os import PathLike
-from typing import Any
+from typing import IO, Any
 
 from lxml import etree
 import pandas as pd
+
+
+NUMERIC_EXACT_COLUMNS = {
+    'lat',
+    'lon',
+    'ele',
+    'hr',
+    'cad',
+    'power',
+    'atemp',
+    'Watts',
+    'DistanceMeters',
+    'AltitudeMeters',
+    'HeartRateBpm',
+    'Cadence',
+}
+
+NUMERIC_SUBSTRINGS = (
+    'Distance',
+    'Speed',
+    'Altitude',
+    'Cadence',
+    'HeartRate',
+    'Watts',
+    'Power',
+    'Calories',
+)
+
+
+def should_coerce_numeric(column_name: str) -> bool:
+    """Return True when an XML-derived column should be numeric."""
+
+    if column_name in NUMERIC_EXACT_COLUMNS:
+        return True
+    return any(token in column_name for token in NUMERIC_SUBSTRINGS)
 
 
 def extract_xml_fields(element: Any) -> Iterator[tuple[str, Any]]:
@@ -43,7 +77,7 @@ def cleanup_xml_dataframe(df: pd.DataFrame, time_col: str) -> pd.DataFrame:
     df = df.convert_dtypes()
 
     for col in df.columns:
-        if col == time_col:
+        if col == time_col or not should_coerce_numeric(str(col)):
             continue
 
         values = df[col]
@@ -75,7 +109,8 @@ def cleanup_xml_dataframe(df: pd.DataFrame, time_col: str) -> pd.DataFrame:
 
 
 def parse_tcx(
-    file: str | PathLike[str] | Any,
+    file: str | PathLike[str] | IO[str] | IO[bytes],
+    strict_xml: bool = False,
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     """Loads a TCX activity into Pandas DataFrames.
 
@@ -86,20 +121,15 @@ def parse_tcx(
     Args:
         file: File-like or path-like object. A path-like argument ending in
             '.gz' will be transparently unzipped before processing.
+        strict_xml: If True, fail on XML parsing errors instead of recovering.
 
     Returns:
         Tuple containing records, laps, and additional metadata.
     """
 
     # lxml takes care of identifying and handling a gzipped file
-    parser = etree.XMLParser(recover=True)
+    parser = etree.XMLParser(recover=not strict_xml)
     root = etree.parse(file, parser).getroot()
-    if parser.error_log:
-        warnings.warn(
-            f'TCX parse recovered with {len(parser.error_log)} XML errors.',
-            RuntimeWarning,
-            stacklevel=2,
-        )
 
     # TCX files occasionally have duplicate timestamps, just drop those
     records = pd.DataFrame(
@@ -128,7 +158,8 @@ def parse_tcx(
 
 
 def parse_gpx(
-    file: str | PathLike[str] | Any,
+    file: str | PathLike[str] | IO[str] | IO[bytes],
+    strict_xml: bool = False,
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     """Loads a GPX activity into a Pandas DataFrame.
 
@@ -139,6 +170,7 @@ def parse_gpx(
     Args:
         file: File-like or path-like object. A path-like argument ending in
             '.gz' will be transparently unzipped before processing.
+        strict_xml: If True, fail on XML parsing errors instead of recovering.
 
     Returns:
         Tuple containing records, laps, and additional metadata. Note GPX files
@@ -150,14 +182,8 @@ def parse_gpx(
     # well enough to suck the data straight out of the XML like we do above for
     # TCX files.
 
-    parser = etree.XMLParser(recover=True)
+    parser = etree.XMLParser(recover=not strict_xml)
     root = etree.parse(file, parser).getroot()
-    if parser.error_log:
-        warnings.warn(
-            f'GPX parse recovered with {len(parser.error_log)} XML errors.',
-            RuntimeWarning,
-            stacklevel=2,
-        )
 
     records = pd.DataFrame(
         dict(extract_xml_fields(element))
