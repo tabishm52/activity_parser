@@ -23,6 +23,24 @@ def select_and_rename_cols(
     return df.loc[:, cols].rename(columns=mapper)
 
 
+def normalize_extension(ext: str) -> str:
+    """Normalize an extension string to one of: fit, tcx, gpx."""
+
+    normalized = ext.lower().lstrip('.')
+    if normalized == 'gz':
+        raise ValueError('Ambiguous extension: .gz without base extension.')
+    return normalized
+
+
+def infer_extension(file: str | PathLike[str]) -> str:
+    """Infer normalized extension from a path-like input."""
+
+    root, ext = os.path.splitext(os.fspath(file))
+    if ext.lower() == '.gz':
+        _, ext = os.path.splitext(root)
+    return normalize_extension(ext)
+
+
 class ActivityParser:
     """Parser for FIT, GPX and TCX files.
 
@@ -210,19 +228,16 @@ class ActivityParser:
             Tuple containing records, laps, and selected extra metadata.
         """
 
-        if ext is None:
-            try:
-                root, ext = os.path.splitext(file)
-            except TypeError as exc:
-                raise ValueError(
-                    'ext must be provided when file is a file-like object.'
-                ) from exc
-            if ext.lower() == '.gz':
-                _, ext = os.path.splitext(root)
+        if ext is not None:
+            ext_normalized = normalize_extension(ext)
+        elif isinstance(file, (str, os.PathLike)):
+            ext_normalized = infer_extension(file)
+        else:
+            raise ValueError(
+                'ext must be provided when file is a file-like object.'
+            )
 
-        ext_lower = ext.lower()
-
-        if ext_lower in ['.fit', 'fit']:
+        if ext_normalized == 'fit':
             records, laps, extra = parse_fit(file)
             records = select_and_rename_cols(
                 records,
@@ -236,7 +251,7 @@ class ActivityParser:
                 self.fit_laps_mapper,
             )
 
-        elif ext_lower in ['.tcx', 'tcx']:
+        elif ext_normalized == 'tcx':
             records, laps, extra = parse_tcx(file)
             records = select_and_rename_cols(
                 records,
@@ -250,7 +265,7 @@ class ActivityParser:
                 self.tcx_laps_mapper,
             )
 
-        elif ext_lower in ['.gpx', 'gpx']:
+        elif ext_normalized == 'gpx':
             records, laps, extra = parse_gpx(file)
             records = select_and_rename_cols(
                 records,
@@ -261,6 +276,6 @@ class ActivityParser:
             # Note GPX files have no lap information
 
         else:
-            raise ValueError(f'File type not supported: {ext}')
+            raise ValueError(f'File type not supported: {ext_normalized}')
 
         return records, laps, extra
