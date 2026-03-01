@@ -1,9 +1,8 @@
 """Functions for parsing FIT files into Pandas DataFrames."""
 
-import collections
 import gzip
 import os
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterator
 from typing import Any, BinaryIO
 
 import pandas as pd
@@ -23,19 +22,55 @@ def copy_fit_frames(fit_file: BinaryIO) -> Iterator[Any]:
             yield frame
 
 
-def extract_fit_dicts(
-    frames: Iterable[Any],
-    name: str,
-) -> Iterator[dict[str, Any]]:
-    """Yields dicts of frame data from FIT frames of a given name."""
+def frame_to_dict(frame: Any) -> dict[str, Any]:
+    """Convert one FIT frame to a dict, dropping unknown fields."""
 
-    for frame in frames:
-        if frame.name == name:
-            yield dict(
-                (field.name, field.value)
-                for field in frame.fields
-                if field.field is not None
-            )
+    return {
+        field.name: field.value
+        for field in frame.fields
+        if field.field is not None
+    }
+
+
+def parse_fit_frames(
+    fit_file: BinaryIO,
+) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
+    """Parse FIT frames from an open file object."""
+
+    records_rows: list[dict[str, Any]] = []
+    laps_rows: list[dict[str, Any]] = []
+    extra_rows: dict[str, list[dict[str, Any]]] = {}
+
+    for frame in copy_fit_frames(fit_file):
+        row = frame_to_dict(frame)
+        if frame.name == 'record':
+            records_rows.append(row)
+        elif frame.name == 'lap':
+            laps_rows.append(row)
+        else:
+            extra_rows.setdefault(frame.name, []).append(row)
+
+    records = pd.DataFrame(records_rows)
+
+    # FIT files occasionally have duplicate timestamps.
+    if 'timestamp' in records.columns:
+        records = records.set_index('timestamp')
+    else:
+        records.index = pd.Index(records.index, name='timestamp')
+
+    records = records[records.index.notna()]
+    records = records[~records.index.duplicated()]
+
+    laps = pd.DataFrame(laps_rows)
+
+    extra: dict[str, Any] = {}
+    for name, rows in extra_rows.items():
+        if len(rows) == 1:
+            extra[name] = rows[0]
+        else:
+            extra[name] = pd.DataFrame(rows)
+
+    return records, laps, extra
 
 
 def parse_fit(
@@ -55,41 +90,14 @@ def parse_fit(
         Tuple containing records, laps, and additional metadata.
     """
 
-    try:
-        _, ext = os.path.splitext(file)
-        is_path = True
-    except TypeError:
-        is_path = False
+    is_path = isinstance(file, (str, os.PathLike))
 
     if is_path:
-        if ext.lower() == '.gz':
-            with gzip.open(file) as fit_file:
-                frames = list(copy_fit_frames(fit_file))
-        else:
-            with open(file, 'rb') as fit_file:
-                frames = list(copy_fit_frames(fit_file))
+        _, ext = os.path.splitext(os.fspath(file))
+        opener = gzip.open if ext.lower() == '.gz' else open
+        with opener(file, 'rb') as fit_file:
+            records, laps, extra = parse_fit_frames(fit_file)
     else:
-        frames = list(copy_fit_frames(file))
-
-    # Note FIT files occasionally have duplicate timestamps, just drop those
-    records = pd.DataFrame(extract_fit_dicts(frames, 'record'))
-    if 'timestamp' in records.columns:
-        records = records.set_index('timestamp')
-    else:
-        records.index = pd.Index(records.index, name='timestamp')
-    records = records[~records.index.duplicated()]
-
-    laps = pd.DataFrame(extract_fit_dicts(frames, 'lap'))
-
-    names = collections.Counter(frame.name for frame in frames)
-    names.pop('record', None)
-    names.pop('lap', None)
-
-    extra = {}
-    for name, count in names.items():
-        if count == 1:
-            extra[name] = next(extract_fit_dicts(frames, name))
-        else:
-            extra[name] = pd.DataFrame(extract_fit_dicts(frames, name))
+        records, laps, extra = parse_fit_frames(file)
 
     return records, laps, extra
