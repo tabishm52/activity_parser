@@ -218,7 +218,7 @@ class ActivityParser:
     ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
         """Loads a FIT, TCX or GPX activity into Pandas DataFrames.
 
-        During import, column names in the ``records`` and ``laps`` DataFrames are
+        During import, column names in ``records`` and ``laps`` are
         normalized into a canonical set of names. Note this function does not
         guarantee that all canonical columns appear in the output, it only
         renames the columns that are present in the activity file.
