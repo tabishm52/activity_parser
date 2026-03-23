@@ -5,9 +5,8 @@ import os
 from collections.abc import Iterator
 from typing import Any, BinaryIO
 
-import pandas as pd
-
 import fitdecode
+import pandas as pd
 
 
 def copy_fit_frames(fit_file: BinaryIO) -> Iterator[Any]:

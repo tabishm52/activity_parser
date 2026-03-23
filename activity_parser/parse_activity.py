@@ -8,8 +8,7 @@ from typing import IO, Any
 import pandas as pd
 
 from .parse_fit_file import parse_fit
-from .parse_tcx_gpx import parse_tcx
-from .parse_tcx_gpx import parse_gpx
+from .parse_tcx_gpx import parse_gpx, parse_tcx
 
 
 def select_and_rename_cols(

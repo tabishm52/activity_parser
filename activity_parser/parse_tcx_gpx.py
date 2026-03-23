@@ -4,9 +4,8 @@ from collections.abc import Iterator
 from os import PathLike
 from typing import IO, Any
 
-from lxml import etree
 import pandas as pd
-
+from lxml import etree
 
 NUMERIC_EXACT_COLUMNS = {
     'lat',
@@ -143,8 +142,7 @@ def parse_tcx(
         element.getparent().remove(element)
 
     laps = pd.DataFrame(
-        dict(extract_xml_fields(element))
-        for element in root.iter('{*}Lap')
+        dict(extract_xml_fields(element)) for element in root.iter('{*}Lap')
     )
     laps = cleanup_xml_dataframe(laps, 'StartTime')
 
@@ -186,8 +184,7 @@ def parse_gpx(
     root = etree.parse(file, parser).getroot()
 
     records = pd.DataFrame(
-        dict(extract_xml_fields(element))
-        for element in root.iter('{*}trkpt')
+        dict(extract_xml_fields(element)) for element in root.iter('{*}trkpt')
     )
     records = cleanup_xml_dataframe(records, 'time').set_index('time')
     records = records[~records.index.duplicated()]

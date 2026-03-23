@@ -20,7 +20,13 @@ Parse FIT, TCX and GPX files into normalized DataFrames:
 >>> records, laps, extra = parser.parse('path/to/tcx_file.tcx')
 """
 
-from .parse_fit_file import parse_fit
-from .parse_tcx_gpx import parse_tcx
-from .parse_tcx_gpx import parse_gpx
 from .parse_activity import ActivityParser
+from .parse_fit_file import parse_fit
+from .parse_tcx_gpx import parse_gpx, parse_tcx
+
+__all__ = [
+    'ActivityParser',
+    'parse_fit',
+    'parse_gpx',
+    'parse_tcx',
+]
