@@ -25,9 +25,9 @@ def select_and_rename_cols(
 def normalize_extension(ext: str) -> str:
     """Normalize an extension string to one of: fit, tcx, gpx."""
 
-    normalized = ext.lower().lstrip('.')
-    if normalized == 'gz':
-        raise ValueError('Ambiguous extension: .gz without base extension.')
+    normalized = ext.lower().lstrip(".")
+    if normalized == "gz":
+        raise ValueError("Ambiguous extension: .gz without base extension.")
     return normalized
 
 
@@ -35,7 +35,7 @@ def infer_extension(file: str | PathLike[str]) -> str:
     """Infer normalized extension from a path-like input."""
 
     root, ext = os.path.splitext(os.fspath(file))
-    if ext.lower() == '.gz':
+    if ext.lower() == ".gz":
         _, ext = os.path.splitext(root)
     return normalize_extension(ext)
 
@@ -65,149 +65,149 @@ class ActivityParser:
         # translate the imported column names into canonical names
 
         self.fit_records_selector = [
-            'position_lat',
-            'position_long',
-            'altitude',
-            'distance',
-            'speed',
-            'cadence',
-            'fractional_cadence',
-            'heart_rate',
-            'power',
-            'left_right_balance',
-            'accumulated_power',
-            'temperature',
+            "position_lat",
+            "position_long",
+            "altitude",
+            "distance",
+            "speed",
+            "cadence",
+            "fractional_cadence",
+            "heart_rate",
+            "power",
+            "left_right_balance",
+            "accumulated_power",
+            "temperature",
         ]
 
         self.tcx_records_selector = [
-            'LatitudeDegrees',
-            'LongitudeDegrees',
-            'AltitudeMeters',
-            'DistanceKm',
-            'Speed',
-            'Cadence',
-            'HeartRateBpm',
-            'Watts',
+            "LatitudeDegrees",
+            "LongitudeDegrees",
+            "AltitudeMeters",
+            "DistanceKm",
+            "Speed",
+            "Cadence",
+            "HeartRateBpm",
+            "Watts",
         ]
 
         self.gpx_records_selector = [
-            'lat',
-            'lon',
-            'ele',
-            'cad',
-            'hr',
-            'power',
-            'atemp',
+            "lat",
+            "lon",
+            "ele",
+            "cad",
+            "hr",
+            "power",
+            "atemp",
         ]
 
         self.fit_records_mapper = {
-            'position_lat': 'latitude',
-            'position_long': 'longitude',
-            'altitude': 'altitude',
-            'distance': 'distance',
-            'speed': 'speed',
-            'cadence': 'cadence',
-            'fractional_cadence': 'fractional_cadence',
-            'heart_rate': 'heart_rate',
-            'power': 'power',
-            'left_right_balance': 'left_right_balance',
-            'accumulated_power': 'accumulated_power',
-            'temperature': 'temperature',
+            "position_lat": "latitude",
+            "position_long": "longitude",
+            "altitude": "altitude",
+            "distance": "distance",
+            "speed": "speed",
+            "cadence": "cadence",
+            "fractional_cadence": "fractional_cadence",
+            "heart_rate": "heart_rate",
+            "power": "power",
+            "left_right_balance": "left_right_balance",
+            "accumulated_power": "accumulated_power",
+            "temperature": "temperature",
         }
 
         self.tcx_records_mapper = {
-            'LatitudeDegrees': 'latitude',
-            'LongitudeDegrees': 'longitude',
-            'AltitudeMeters': 'altitude',
-            'DistanceKm': 'distance',
-            'Speed': 'speed',
-            'Cadence': 'cadence',
-            'HeartRateBpm': 'heart_rate',
-            'Watts': 'power',
+            "LatitudeDegrees": "latitude",
+            "LongitudeDegrees": "longitude",
+            "AltitudeMeters": "altitude",
+            "DistanceKm": "distance",
+            "Speed": "speed",
+            "Cadence": "cadence",
+            "HeartRateBpm": "heart_rate",
+            "Watts": "power",
         }
 
         self.gpx_records_mapper = {
-            'lat': 'latitude',
-            'lon': 'longitude',
-            'ele': 'altitude',
-            'cad': 'cadence',
-            'hr': 'heart_rate',
-            'power': 'power',
-            'atemp': 'temperature',
+            "lat": "latitude",
+            "lon": "longitude",
+            "ele": "altitude",
+            "cad": "cadence",
+            "hr": "heart_rate",
+            "power": "power",
+            "atemp": "temperature",
         }
 
         self.fit_laps_selector = [
-            'event',
-            'event_type',
-            'lap_trigger',
-            'start_time',
-            'total_elapsed_time',
-            'total_timer_time',
-            'start_position_lat',
-            'start_position_long',
-            'end_position_lat',
-            'end_position_long',
-            'total_distance',
-            'total_ascent',
-            'total_descent',
-            'avg_vam',
-            'avg_speed',
-            'max_speed',
-            'avg_cadence',
-            'max_cadence',
-            'avg_fractional_cadence',
-            'max_fractional_cadence',
-            'total_strokes',
-            'avg_heart_rate',
-            'max_heart_rate',
-            'time_in_hr_zone',
-            'avg_power',
-            'max_power',
-            'normalized_power',
-            'left_right_balance',
-            'time_in_power_zone',
-            'total_work',
-            'avg_temperature',
-            'max_temperature',
-            'total_calories',
-            'total_fat_calories',
-            'sport',
-            'sub_sport',
+            "event",
+            "event_type",
+            "lap_trigger",
+            "start_time",
+            "total_elapsed_time",
+            "total_timer_time",
+            "start_position_lat",
+            "start_position_long",
+            "end_position_lat",
+            "end_position_long",
+            "total_distance",
+            "total_ascent",
+            "total_descent",
+            "avg_vam",
+            "avg_speed",
+            "max_speed",
+            "avg_cadence",
+            "max_cadence",
+            "avg_fractional_cadence",
+            "max_fractional_cadence",
+            "total_strokes",
+            "avg_heart_rate",
+            "max_heart_rate",
+            "time_in_hr_zone",
+            "avg_power",
+            "max_power",
+            "normalized_power",
+            "left_right_balance",
+            "time_in_power_zone",
+            "total_work",
+            "avg_temperature",
+            "max_temperature",
+            "total_calories",
+            "total_fat_calories",
+            "sport",
+            "sub_sport",
         ]
 
         self.tcx_laps_selector = [
-            'TriggerMethod',
-            'StartTime',
-            'TotalTimeSeconds',
-            'DistanceKm',
-            'AvgSpeed',
-            'MaximumSpeed',
-            'Cadence',
-            'MaxBikeCadence',
-            'AverageHeartRateBpm',
-            'MaximumHeartRateBpm',
-            'AvgWatts',
-            'MaxWatts',
-            'Calories',
+            "TriggerMethod",
+            "StartTime",
+            "TotalTimeSeconds",
+            "DistanceKm",
+            "AvgSpeed",
+            "MaximumSpeed",
+            "Cadence",
+            "MaxBikeCadence",
+            "AverageHeartRateBpm",
+            "MaximumHeartRateBpm",
+            "AvgWatts",
+            "MaxWatts",
+            "Calories",
         ]
 
         # Just use the FIT names for lap data as canonical
         self.fit_laps_mapper = {}
 
         self.tcx_laps_mapper = {
-            'TriggerMethod': 'lap_trigger',
-            'StartTime': 'start_time',
-            'TotalTimeSeconds': 'total_elapsed_time',
-            'DistanceKm': 'total_distance',
-            'AvgSpeed': 'avg_speed',
-            'MaximumSpeed': 'max_speed',
-            'Cadence': 'avg_cadence',
-            'MaxBikeCadence': 'max_cadence',
-            'AverageHeartRateBpm': 'avg_heart_rate',
-            'MaximumHeartRateBpm': 'max_heart_rate',
-            'AvgWatts': 'avg_power',
-            'MaxWatts': 'max_power',
-            'Calories': 'total_calories',
+            "TriggerMethod": "lap_trigger",
+            "StartTime": "start_time",
+            "TotalTimeSeconds": "total_elapsed_time",
+            "DistanceKm": "total_distance",
+            "AvgSpeed": "avg_speed",
+            "MaximumSpeed": "max_speed",
+            "Cadence": "avg_cadence",
+            "MaxBikeCadence": "max_cadence",
+            "AverageHeartRateBpm": "avg_heart_rate",
+            "MaximumHeartRateBpm": "max_heart_rate",
+            "AvgWatts": "avg_power",
+            "MaxWatts": "max_power",
+            "Calories": "total_calories",
         }
 
     def parse(
@@ -240,48 +240,48 @@ class ActivityParser:
             ext_normalized = infer_extension(file)
         else:
             raise ValueError(
-                'ext must be provided when file is a file-like object.'
+                "ext must be provided when file is a file-like object."
             )
 
-        if ext_normalized == 'fit':
+        if ext_normalized == "fit":
             records, laps, extra = parse_fit(file)
             records = select_and_rename_cols(
                 records,
                 self.fit_records_selector,
                 self.fit_records_mapper,
             )
-            records.rename_axis('time', inplace=True)
+            records.rename_axis("time", inplace=True)
             laps = select_and_rename_cols(
                 laps,
                 self.fit_laps_selector,
                 self.fit_laps_mapper,
             )
 
-        elif ext_normalized == 'tcx':
+        elif ext_normalized == "tcx":
             records, laps, extra = parse_tcx(file, strict_xml=self.strict_xml)
             records = select_and_rename_cols(
                 records,
                 self.tcx_records_selector,
                 self.tcx_records_mapper,
             )
-            records.rename_axis('time', inplace=True)
+            records.rename_axis("time", inplace=True)
             laps = select_and_rename_cols(
                 laps,
                 self.tcx_laps_selector,
                 self.tcx_laps_mapper,
             )
 
-        elif ext_normalized == 'gpx':
+        elif ext_normalized == "gpx":
             records, laps, extra = parse_gpx(file, strict_xml=self.strict_xml)
             records = select_and_rename_cols(
                 records,
                 self.gpx_records_selector,
                 self.gpx_records_mapper,
             )
-            records.rename_axis('time', inplace=True)
+            records.rename_axis("time", inplace=True)
             # Note GPX files have no lap information
 
         else:
-            raise ValueError(f'File type not supported: {ext_normalized}')
+            raise ValueError(f"File type not supported: {ext_normalized}")
 
         return records, laps, extra

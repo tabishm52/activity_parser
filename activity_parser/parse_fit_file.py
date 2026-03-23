@@ -42,9 +42,9 @@ def parse_fit_frames(
 
     for frame in copy_fit_frames(fit_file):
         row = frame_to_dict(frame)
-        if frame.name == 'record':
+        if frame.name == "record":
             records_rows.append(row)
-        elif frame.name == 'lap':
+        elif frame.name == "lap":
             laps_rows.append(row)
         else:
             extra_rows.setdefault(frame.name, []).append(row)
@@ -52,10 +52,10 @@ def parse_fit_frames(
     records = pd.DataFrame(records_rows)
 
     # FIT files occasionally have duplicate timestamps.
-    if 'timestamp' in records.columns:
-        records = records.set_index('timestamp')
+    if "timestamp" in records.columns:
+        records = records.set_index("timestamp")
     else:
-        records.index = pd.Index(records.index, name='timestamp')
+        records.index = pd.Index(records.index, name="timestamp")
 
     records = records[records.index.notna()]
     records = records[~records.index.duplicated()]
@@ -93,8 +93,8 @@ def parse_fit(
 
     if is_path:
         _, ext = os.path.splitext(os.fspath(file))
-        opener = gzip.open if ext.lower() == '.gz' else open
-        with opener(file, 'rb') as fit_file:
+        opener = gzip.open if ext.lower() == ".gz" else open
+        with opener(file, "rb") as fit_file:
             records, laps, extra = parse_fit_frames(fit_file)
     else:
         records, laps, extra = parse_fit_frames(file)

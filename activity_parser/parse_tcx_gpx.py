@@ -8,29 +8,29 @@ import pandas as pd
 from lxml import etree
 
 NUMERIC_EXACT_COLUMNS = {
-    'lat',
-    'lon',
-    'ele',
-    'hr',
-    'cad',
-    'power',
-    'atemp',
-    'Watts',
-    'DistanceMeters',
-    'AltitudeMeters',
-    'HeartRateBpm',
-    'Cadence',
+    "lat",
+    "lon",
+    "ele",
+    "hr",
+    "cad",
+    "power",
+    "atemp",
+    "Watts",
+    "DistanceMeters",
+    "AltitudeMeters",
+    "HeartRateBpm",
+    "Cadence",
 }
 
 NUMERIC_SUBSTRINGS = (
-    'Distance',
-    'Speed',
-    'Altitude',
-    'Cadence',
-    'HeartRate',
-    'Watts',
-    'Power',
-    'Calories',
+    "Distance",
+    "Speed",
+    "Altitude",
+    "Cadence",
+    "HeartRate",
+    "Watts",
+    "Power",
+    "Calories",
 )
 
 
@@ -49,7 +49,7 @@ def extract_xml_fields(element: Any) -> Iterator[tuple[str, Any]]:
         # Some (name, value) pairs are stored as XML attributes
         for key, value in el.attrib.items():
             localname = etree.QName(key).localname
-            if localname != 'type':
+            if localname != "type":
                 yield localname, value
 
         # In a TCX file, some values are buried in a 'Value' element
@@ -58,7 +58,7 @@ def extract_xml_fields(element: Any) -> Iterator[tuple[str, Any]]:
                 child = next(el.iterchildren())
                 parent_localname = etree.QName(el).localname
                 child_localname = etree.QName(child).localname
-                if child_localname == 'Value':
+                if child_localname == "Value":
                     yield parent_localname, child.text
             except StopIteration:
                 pass
@@ -66,7 +66,7 @@ def extract_xml_fields(element: Any) -> Iterator[tuple[str, Any]]:
         # But most values are recorded as leaf element text
         else:
             localname = etree.QName(el).localname
-            if localname != 'Value':
+            if localname != "Value":
                 yield localname, el.text
 
 
@@ -84,12 +84,12 @@ def cleanup_xml_dataframe(df: pd.DataFrame, time_col: str) -> pd.DataFrame:
         if non_null == 0:
             continue
 
-        numeric_values = pd.to_numeric(values, errors='coerce')
+        numeric_values = pd.to_numeric(values, errors="coerce")
         if numeric_values.notna().sum() == non_null:
             df[col] = numeric_values
 
     if time_col in df.columns:
-        df[time_col] = pd.to_datetime(df[time_col], errors='coerce')
+        df[time_col] = pd.to_datetime(df[time_col], errors="coerce")
     else:
         df[time_col] = pd.NaT
 
@@ -98,10 +98,10 @@ def cleanup_xml_dataframe(df: pd.DataFrame, time_col: str) -> pd.DataFrame:
     # names apply to TCX files only; GPX files don't seem to have distance and
     # speed information.
     for col in df.columns:
-        if 'Distance' in col:
+        if "Distance" in col:
             df[col] = df[col] / 1000.0
-            df = df.rename(columns={col: col.replace('Meters', 'Km')})
-        if 'Speed' in col:
+            df = df.rename(columns={col: col.replace("Meters", "Km")})
+        if "Speed" in col:
             df[col] = df[col] * 60.0 * 60.0 / 1000.0
 
     return df
@@ -133,24 +133,24 @@ def parse_tcx(
     # TCX files occasionally have duplicate timestamps, just drop those
     records = pd.DataFrame(
         dict(extract_xml_fields(element))
-        for element in root.iter('{*}Trackpoint')
+        for element in root.iter("{*}Trackpoint")
     )
-    records = cleanup_xml_dataframe(records, 'Time').set_index('Time')
+    records = cleanup_xml_dataframe(records, "Time").set_index("Time")
     records = records[~records.index.duplicated()]
 
-    for element in root.iter('{*}Track'):
+    for element in root.iter("{*}Track"):
         element.getparent().remove(element)
 
     laps = pd.DataFrame(
-        dict(extract_xml_fields(element)) for element in root.iter('{*}Lap')
+        dict(extract_xml_fields(element)) for element in root.iter("{*}Lap")
     )
-    laps = cleanup_xml_dataframe(laps, 'StartTime')
+    laps = cleanup_xml_dataframe(laps, "StartTime")
 
-    for element in root.iter('{*}Lap'):
+    for element in root.iter("{*}Lap"):
         element.getparent().remove(element)
 
     extra = dict(extract_xml_fields(root))
-    extra.pop('schemaLocation', None)
+    extra.pop("schemaLocation", None)
 
     return records, laps, extra
 
@@ -184,15 +184,15 @@ def parse_gpx(
     root = etree.parse(file, parser).getroot()
 
     records = pd.DataFrame(
-        dict(extract_xml_fields(element)) for element in root.iter('{*}trkpt')
+        dict(extract_xml_fields(element)) for element in root.iter("{*}trkpt")
     )
-    records = cleanup_xml_dataframe(records, 'time').set_index('time')
+    records = cleanup_xml_dataframe(records, "time").set_index("time")
     records = records[~records.index.duplicated()]
 
-    for element in root.iter('{*}trkseg', '{*}rte', '{*}wpt'):
+    for element in root.iter("{*}trkseg", "{*}rte", "{*}wpt"):
         element.getparent().remove(element)
 
     extra = dict(extract_xml_fields(root))
-    extra.pop('schemaLocation', None)
+    extra.pop("schemaLocation", None)
 
     return records, pd.DataFrame(), extra
