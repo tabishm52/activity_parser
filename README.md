@@ -1,6 +1,6 @@
 # activity-parser
 
-Parser for loading FIT, TCX and GPX files into Pandas DataFrames.
+Parser for loading FIT, TCX and GPX activity files into Pandas DataFrames.
 
 Provides a parser object for reading (optionally gzipped) FIT, TCX, and GPX
 activity files and converting them into Pandas DataFrames. During import,
@@ -10,7 +10,7 @@ of output column names.
 ## Installation
 
 ```bash
-pip install git+https://github.com/GITHUB_USER/activity-parser.git
+pip install git+https://github.com/tabishm52/activity_parser.git
 ```
 
 ## Usage
