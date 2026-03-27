@@ -1,8 +1,9 @@
 """Functions for parsing FIT files into Pandas DataFrames."""
 
 import gzip
-import os
 from collections.abc import Iterator
+from os import PathLike
+from pathlib import Path
 from typing import Any, BinaryIO
 
 import fitdecode
@@ -73,7 +74,7 @@ def parse_fit_frames(
 
 
 def parse_fit(
-    file: str | os.PathLike[str] | BinaryIO,
+    file: str | PathLike[str] | BinaryIO,
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     """Loads a FIT activity into Pandas DataFrames.
 
@@ -89,10 +90,10 @@ def parse_fit(
         Tuple containing records, laps, and additional metadata.
     """
 
-    is_path = isinstance(file, (str, os.PathLike))
+    is_path = isinstance(file, (str, PathLike))
 
     if is_path:
-        _, ext = os.path.splitext(os.fspath(file))
+        ext = Path(file).suffix
         opener = gzip.open if ext.lower() == ".gz" else open
         with opener(file, "rb") as fit_file:
             records, laps, extra = parse_fit_frames(fit_file)

@@ -1,8 +1,8 @@
 """Class for parsing FIT, TCX and GPX files into Pandas DataFrames."""
 
-import os
 from collections.abc import Mapping, Sequence
 from os import PathLike
+from pathlib import Path
 from typing import IO, Any
 
 import pandas as pd
@@ -34,9 +34,10 @@ def normalize_extension(ext: str) -> str:
 def infer_extension(file: str | PathLike[str]) -> str:
     """Infer normalized extension from a path-like input."""
 
-    root, ext = os.path.splitext(os.fspath(file))
+    p = Path(file)
+    ext = p.suffix
     if ext.lower() == ".gz":
-        _, ext = os.path.splitext(root)
+        ext = Path(p.stem).suffix
     return normalize_extension(ext)
 
 
@@ -236,7 +237,7 @@ class ActivityParser:
 
         if ext is not None:
             ext_normalized = normalize_extension(ext)
-        elif isinstance(file, (str, os.PathLike)):
+        elif isinstance(file, (str, PathLike)):
             ext_normalized = infer_extension(file)
         else:
             raise ValueError(
