@@ -52,6 +52,12 @@ def parse_fit_frames(
 
     records = pd.DataFrame(records_rows)
 
+    # None-valued fields cause object dtype; coerce numeric columns to float64.
+    for col in records.select_dtypes(include="object").columns:
+        coerced = pd.to_numeric(records[col], errors="coerce")
+        if coerced.notna().sum() == records[col].notna().sum():
+            records[col] = coerced
+
     # FIT files occasionally have duplicate timestamps.
     if "timestamp" in records.columns:
         records = records.set_index("timestamp")

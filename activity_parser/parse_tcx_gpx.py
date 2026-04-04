@@ -20,6 +20,8 @@ NUMERIC_EXACT_COLUMNS = {
     "AltitudeMeters",
     "HeartRateBpm",
     "Cadence",
+    "LatitudeDegrees",
+    "LongitudeDegrees",
 }
 
 NUMERIC_SUBSTRINGS = (
@@ -72,8 +74,6 @@ def extract_xml_fields(element: Any) -> Iterator[tuple[str, Any]]:
 
 def cleanup_xml_dataframe(df: pd.DataFrame, time_col: str) -> pd.DataFrame:
     """Common post-processing for DataFrames extracted from XML elements."""
-
-    df = df.convert_dtypes()
 
     for col in df.columns:
         if col == time_col or not should_coerce_numeric(str(col)):
