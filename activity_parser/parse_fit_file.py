@@ -12,7 +12,6 @@ import pandas as pd
 
 def copy_fit_frames(fit_file: BinaryIO) -> Iterator[Any]:
     """Yields FIT data frames from a file-like object."""
-
     processor = fitdecode.StandardUnitsDataProcessor()
     for frame in fitdecode.FitReader(fit_file, processor=processor):
         if (
@@ -24,7 +23,6 @@ def copy_fit_frames(fit_file: BinaryIO) -> Iterator[Any]:
 
 def frame_to_dict(frame: Any) -> dict[str, Any]:
     """Convert one FIT frame to a dict, dropping unknown fields."""
-
     return {
         field.name: field.value
         for field in frame.fields
@@ -36,7 +34,6 @@ def parse_fit_frames(
     fit_file: BinaryIO,
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     """Parse FIT frames from an open file object."""
-
     records_rows: list[dict[str, Any]] = []
     laps_rows: list[dict[str, Any]] = []
     extra_rows: dict[str, list[dict[str, Any]]] = {}
@@ -95,7 +92,6 @@ def parse_fit(
     Returns:
         Tuple containing records, laps, and additional metadata.
     """
-
     is_path = isinstance(file, (str, PathLike))
 
     if is_path:

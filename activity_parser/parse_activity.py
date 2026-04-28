@@ -17,14 +17,12 @@ def select_and_rename_cols(
     mapper: Mapping[str, str],
 ) -> pd.DataFrame:
     """Select and rename columns from a DataFrame."""
-
     cols = [col for col in selector if col in df.columns]
     return df.loc[:, cols].rename(columns=mapper)
 
 
 def normalize_extension(ext: str) -> str:
     """Normalize an extension string to one of: fit, tcx, gpx."""
-
     normalized = ext.lower().lstrip(".")
     if normalized == "gz":
         raise ValueError("Ambiguous extension: .gz without base extension.")
@@ -33,7 +31,6 @@ def normalize_extension(ext: str) -> str:
 
 def infer_extension(file: str | PathLike[str]) -> str:
     """Infer normalized extension from a path-like input."""
-
     p = Path(file)
     ext = p.suffix
     if ext.lower() == ".gz":
@@ -58,7 +55,6 @@ class ActivityParser:
             strict_xml: If True, TCX/GPX XML parsing fails on malformed input.
                 If False, parser recovery is enabled.
         """
-
         self.strict_xml = strict_xml
 
         # 'Selectors' specify the list and order of columns to be copied from
@@ -234,7 +230,6 @@ class ActivityParser:
         Returns:
             Tuple containing records, laps, and selected extra metadata.
         """
-
         if ext is not None:
             ext_normalized = normalize_extension(ext)
         elif isinstance(file, (str, PathLike)):
