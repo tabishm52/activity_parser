@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "activity-parser"
 version = "0.1.0"
 description = "Parser for loading FIT, TCX and GPX files into Pandas DataFrames."
-requires-python = ">=3.10"
+requires-python = ">=3.14"
 dependencies = [
     "pandas",
     "lxml",
