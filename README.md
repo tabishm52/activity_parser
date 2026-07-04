@@ -10,7 +10,7 @@ During import, column names extracted from activity files are normalized into a 
 ## Installation
 
 ```bash
-pip install git+https://github.com/tabishm52/activity_parser.git
+pip install activity-parser
 ```
 
 ## Usage
