@@ -14,7 +14,14 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pre-commit", "pytest", "ruff"]
+dev = [
+    "lxml-stubs",
+    "pandas-stubs",
+    "pre-commit",
+    "pyright",
+    "pytest",
+    "ruff",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
