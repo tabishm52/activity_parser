@@ -9,7 +9,8 @@
         <DistanceMeters>20.0</DistanceMeters>
         <MaximumSpeed>12.0</MaximumSpeed>
         <Calories>10</Calories>
-        <AverageHeartRateBpm><Value>101</Value></AverageHeartRateBpm>
+        <!-- Comment before <Value>: must not shadow the Value-wrapped lookup -->
+        <AverageHeartRateBpm><!-- c --><Value>101</Value></AverageHeartRateBpm>
         <MaximumHeartRateBpm><Value>102</Value></MaximumHeartRateBpm>
         <Intensity>Active</Intensity>
         <Cadence>81</Cadence>

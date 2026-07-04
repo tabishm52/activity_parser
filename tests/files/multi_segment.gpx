@@ -3,6 +3,7 @@
     xmlns="http://www.topografix.com/GPX/1/1">
   <trk>
     <name>Multi Segment Track</name>
+    <!-- Points from all <trkseg> elements merge into one records frame -->
     <trkseg>
       <trkpt lat="37.0" lon="-122.0">
         <time>2026-01-05T08:00:00Z</time>

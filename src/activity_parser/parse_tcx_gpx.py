@@ -57,7 +57,8 @@ def extract_xml_fields(
     element: etree._Element,
 ) -> Iterator[tuple[str, str | None]]:
     """Yields (name, value) pairs recursively through an XML element."""
-    for el in element.iter():
+    # Iterating with "*" matches only true elements and drops e.g. comments
+    for el in element.iter("*"):
         # Some (name, value) pairs are stored as XML attributes
         for key, value in el.attrib.items():
             localname = etree.QName(key).localname
@@ -67,7 +68,7 @@ def extract_xml_fields(
         # In a TCX file, some values are buried in a 'Value' element
         if el.text is None or el.text.isspace():
             try:
-                child = next(el.iterchildren())
+                child = next(el.iterchildren("*"))
                 parent_localname = etree.QName(el).localname
                 child_localname = etree.QName(child).localname
                 if child_localname == "Value":
