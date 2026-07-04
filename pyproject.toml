@@ -4,14 +4,34 @@ build-backend = "hatchling.build"
 
 [project]
 name = "activity-parser"
-version = "0.1.0"
+version = "1.0.0"
 description = "Parser for loading FIT, TCX and GPX files into Pandas DataFrames."
-requires-python = ">=3.14"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Tabish Mustufa", email = "tabishm@gmail.com" },
+]
+keywords = ["fit", "tcx", "gpx", "gps", "fitness", "pandas", "parser"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: GIS",
+]
+requires-python = ">=3.11"
 dependencies = [
     "pandas",
     "lxml",
     "fitdecode",
 ]
+
+[project.urls]
+Repository = "https://github.com/tabishm52/activity_parser"
+Issues = "https://github.com/tabishm52/activity_parser/issues"
 
 [dependency-groups]
 dev = [
@@ -28,7 +48,7 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 80
-target-version = "py314"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "PL", "UP"]
