@@ -123,7 +123,7 @@ def parse_tcx(
     be merged into one set of return values, possibly over-writing some fields.
 
     Args:
-        file: File-like or path-like object. A path-like argument ending in '.gz' will
+        file: File-like or path-like object. A path-like argument ending in ``.gz`` will
             be transparently unzipped before processing.
         strict_xml: If True, fail on XML parsing errors instead of recovering.
 
@@ -166,7 +166,7 @@ def parse_gpx(
     and routes in the GPX file are ignored.
 
     Args:
-        file: File-like or path-like object. A path-like argument ending in '.gz' will
+        file: File-like or path-like object. A path-like argument ending in ``.gz`` will
             be transparently unzipped before processing.
         strict_xml: If True, fail on XML parsing errors instead of recovering.
 

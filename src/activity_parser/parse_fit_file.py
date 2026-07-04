@@ -86,7 +86,7 @@ def parse_fit(
     will be merged into one set of return values.
 
     Args:
-        file: File-like or path-like object. A path-like argument ending in '.gz' will
+        file: File-like or path-like object. A path-like argument ending in ``.gz`` will
             be unzipped before processing.
 
     Returns:

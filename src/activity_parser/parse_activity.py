@@ -222,11 +222,10 @@ class ActivityParser:
 
         Args:
             file: Binary file-like or path-like object. A path-like argument ending in
-                '.gz' will be unzipped before processing.
-            ext: String of value ``FIT``, ``TCX``, or ``GPX`` that specifies the file
-                type. Must be provided if ``file`` is a file-like object. Optional if
-                ``file`` is a path-like object (the file type will be inferred from the
-                file name).
+                ``.gz`` will be unzipped before processing.
+            ext: File type, case-insensitive: ``fit``, ``tcx``, or ``gpx``. Required for
+                a file-like ``file``; optional for a path-like ``file`` (inferred from
+                the name).
 
         Returns:
             Tuple containing records, laps, and selected extra metadata.
