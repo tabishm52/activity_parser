@@ -9,8 +9,11 @@ distributed under the MIT license.
 
 ## Hand-written XML files
 
-`sample.tcx`, `sample.gpx`, `no_position.tcx`, and `multi_segment.gpx` are
-minimal fixtures written for this test suite, with round-number values chosen
-so tests can assert exact parsed output. `sample.tcx` and `sample.gpx` each
-include one trackpoint with a duplicated timestamp to exercise duplicate-index
-handling.
+`sample.tcx`, `sample.gpx`, `no_position.tcx`, `multi_segment.gpx`,
+`no_time.tcx`, and `no_time.gpx` are minimal fixtures written for this test
+suite, with round-number values chosen so tests can assert exact parsed
+output. `sample.tcx` and `sample.gpx` each include one trackpoint with a
+duplicated timestamp to exercise duplicate-index handling. `no_time.tcx` and
+`no_time.gpx` each include two consecutive trackpoints missing their time
+element, to exercise dropping NaT-indexed rows instead of collapsing them
+together as duplicates.

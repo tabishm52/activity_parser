@@ -142,6 +142,7 @@ def parse_tcx(
         for element in root.iter("{*}Trackpoint")
     )
     records = cleanup_xml_dataframe(records, "Time").set_index("Time")
+    records = records[records.index.notna()]
     records = records[~records.index.duplicated()]
 
     remove_elements(root, "{*}Track")
@@ -190,6 +191,7 @@ def parse_gpx(
         dict(extract_xml_fields(element)) for element in root.iter("{*}trkpt")
     )
     records = cleanup_xml_dataframe(records, "time").set_index("time")
+    records = records[records.index.notna()]
     records = records[~records.index.duplicated()]
 
     remove_elements(root, "{*}trkseg", "{*}rte", "{*}wpt")

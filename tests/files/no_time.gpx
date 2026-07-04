@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx creator="activity_parser tests" version="1.1"
+    xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>No Time Track</name>
+    <trkseg>
+      <trkpt lat="37.0000" lon="-122.0000">
+        <ele>10.0</ele>
+        <time>2026-01-05T08:00:00Z</time>
+        <extensions>
+          <hr>100</hr>
+        </extensions>
+      </trkpt>
+      <!-- No time element: should be dropped, not treated as a duplicate -->
+      <trkpt lat="37.0001" lon="-122.0001">
+        <ele>11.0</ele>
+        <extensions>
+          <hr>999</hr>
+        </extensions>
+      </trkpt>
+      <!-- Second no-time point: should also be dropped, not merged with the first -->
+      <trkpt lat="37.0002" lon="-122.0002">
+        <ele>12.0</ele>
+        <extensions>
+          <hr>999</hr>
+        </extensions>
+      </trkpt>
+      <trkpt lat="37.0003" lon="-122.0003">
+        <ele>13.0</ele>
+        <time>2026-01-05T08:00:01Z</time>
+        <extensions>
+          <hr>101</hr>
+        </extensions>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

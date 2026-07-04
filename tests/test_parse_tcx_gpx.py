@@ -15,6 +15,8 @@ SAMPLE_TCX = FILES / "sample.tcx"
 SAMPLE_GPX = FILES / "sample.gpx"
 NO_POSITION_TCX = FILES / "no_position.tcx"
 MULTI_SEGMENT_GPX = FILES / "multi_segment.gpx"
+NO_TIME_TCX = FILES / "no_time.tcx"
+NO_TIME_GPX = FILES / "no_time.gpx"
 
 
 def test_should_coerce_numeric():
@@ -85,6 +87,14 @@ def test_tcx_without_position():
     assert records["power"].tolist() == [200, 210, 220]
 
 
+def test_tcx_no_time_rows_dropped():
+    # Trackpoints without a <Time> element get a NaT index; these should be
+    # dropped rather than collapsed together as "duplicate" NaT timestamps.
+    records, _, _ = ActivityParser().parse(NO_TIME_TCX)
+    assert len(records) == 2
+    assert records["heart_rate"].tolist() == [100, 101]
+
+
 # ---------------------------------------------------------------------------
 # GPX
 # ---------------------------------------------------------------------------
@@ -116,6 +126,14 @@ def test_gpx_multiple_track_segments():
     # Points from all <trkseg> elements are merged into one records frame
     records, _, _ = ActivityParser().parse(MULTI_SEGMENT_GPX)
     assert records["latitude"].tolist() == pytest.approx([37.0, 37.1, 37.2])
+
+
+def test_gpx_no_time_rows_dropped():
+    # Trackpoints without a <time> element get a NaT index; these should be
+    # dropped rather than collapsed together as "duplicate" NaT timestamps.
+    records, _, _ = ActivityParser().parse(NO_TIME_GPX)
+    assert len(records) == 2
+    assert records["heart_rate"].tolist() == [100, 101]
 
 
 # ---------------------------------------------------------------------------
