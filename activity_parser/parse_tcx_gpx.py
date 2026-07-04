@@ -2,7 +2,7 @@
 
 from collections.abc import Iterator
 from os import PathLike
-from typing import IO, Any
+from typing import IO, cast
 
 import pandas as pd
 from lxml import etree
@@ -51,14 +51,16 @@ def remove_elements(root: etree._Element, *tags: str) -> None:
             parent.remove(element)
 
 
-def extract_xml_fields(element: Any) -> Iterator[tuple[str, Any]]:
+def extract_xml_fields(
+    element: etree._Element,
+) -> Iterator[tuple[str, str | None]]:
     """Yields (name, value) pairs recursively through an XML element."""
     for el in element.iter():
         # Some (name, value) pairs are stored as XML attributes
         for key, value in el.attrib.items():
             localname = etree.QName(key).localname
             if localname != "type":
-                yield localname, value
+                yield localname, cast(str, value)
 
         # In a TCX file, some values are buried in a 'Value' element
         if el.text is None or el.text.isspace():
@@ -115,7 +117,7 @@ def cleanup_xml_dataframe(df: pd.DataFrame, time_col: str) -> pd.DataFrame:
 def parse_tcx(
     file: str | PathLike[str] | IO[str] | IO[bytes],
     strict_xml: bool = False,
-) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
+) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, str | None]]:
     """Loads a TCX activity into Pandas DataFrames.
 
     Assumes that the TCX file is all one activity. Files with multiple
@@ -160,7 +162,7 @@ def parse_tcx(
 def parse_gpx(
     file: str | PathLike[str] | IO[str] | IO[bytes],
     strict_xml: bool = False,
-) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
+) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, str | None]]:
     """Loads a GPX activity into a Pandas DataFrame.
 
     Assumes that the GPX file is all one activity. Files with multiple tracks
