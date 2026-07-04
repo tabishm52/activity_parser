@@ -43,6 +43,14 @@ def should_coerce_numeric(column_name: str) -> bool:
     return any(token in column_name for token in NUMERIC_SUBSTRINGS)
 
 
+def remove_elements(root: etree._Element, *tags: str) -> None:
+    """Remove all elements matching ``tags`` from the tree."""
+    for element in root.iter(*tags):
+        parent = element.getparent()
+        if parent is not None:
+            parent.remove(element)
+
+
 def extract_xml_fields(element: Any) -> Iterator[tuple[str, Any]]:
     """Yields (name, value) pairs recursively through an XML element."""
     for el in element.iter():
@@ -134,16 +142,14 @@ def parse_tcx(
     records = cleanup_xml_dataframe(records, "Time").set_index("Time")
     records = records[~records.index.duplicated()]
 
-    for element in root.iter("{*}Track"):
-        element.getparent().remove(element)
+    remove_elements(root, "{*}Track")
 
     laps = pd.DataFrame(
         dict(extract_xml_fields(element)) for element in root.iter("{*}Lap")
     )
     laps = cleanup_xml_dataframe(laps, "StartTime")
 
-    for element in root.iter("{*}Lap"):
-        element.getparent().remove(element)
+    remove_elements(root, "{*}Lap")
 
     extra = dict(extract_xml_fields(root))
     extra.pop("schemaLocation", None)
@@ -184,8 +190,7 @@ def parse_gpx(
     records = cleanup_xml_dataframe(records, "time").set_index("time")
     records = records[~records.index.duplicated()]
 
-    for element in root.iter("{*}trkseg", "{*}rte", "{*}wpt"):
-        element.getparent().remove(element)
+    remove_elements(root, "{*}trkseg", "{*}rte", "{*}wpt")
 
     extra = dict(extract_xml_fields(root))
     extra.pop("schemaLocation", None)
