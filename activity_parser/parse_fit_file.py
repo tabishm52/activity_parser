@@ -1,5 +1,7 @@
 """Functions for parsing FIT files into Pandas DataFrames."""
 
+from __future__ import annotations
+
 import gzip
 from collections.abc import Iterator
 from os import PathLike
