@@ -47,9 +47,7 @@ def test_tcx_records_values():
     assert records["longitude"].iloc[0] == pytest.approx(-122.0)
     assert records["altitude"].tolist() == [10.0, 11.0, 12.0, 13.0, 14.0]
     # DistanceMeters converted to km
-    assert records["distance"].tolist() == pytest.approx(
-        [0.0, 0.01, 0.02, 0.03, 0.04]
-    )
+    assert records["distance"].tolist() == pytest.approx([0.0, 0.01, 0.02, 0.03, 0.04])
     # Speed converted from m/s to km/h
     assert (records["speed"] == 36.0).all()
     # Value-wrapped HeartRateBpm extracted
@@ -88,8 +86,8 @@ def test_tcx_without_position():
 
 
 def test_tcx_no_time_rows_dropped():
-    # Trackpoints without a <Time> element get a NaT index; these should be
-    # dropped rather than collapsed together as "duplicate" NaT timestamps.
+    # Trackpoints without a <Time> element get a NaT index; these should be dropped
+    # rather than collapsed together as "duplicate" NaT timestamps.
     records, _, _ = ActivityParser().parse(NO_TIME_TCX)
     assert len(records) == 2
     assert records["heart_rate"].tolist() == [100, 101]
@@ -108,16 +106,14 @@ def test_gpx_records_values():
     assert len(records) == 3
     assert (records["heart_rate"] != 999).all()
 
-    assert records["latitude"].tolist() == pytest.approx(
-        [37.0000, 37.0001, 37.0002]
-    )
+    assert records["latitude"].tolist() == pytest.approx([37.0000, 37.0001, 37.0002])
     assert records["altitude"].tolist() == [10.0, 11.0, 12.0]
     assert records["heart_rate"].tolist() == [100, 101, 102]
     assert records["cadence"].tolist() == [80, 81, 82]
     assert records["power"].tolist() == [200, 210, 220]
     assert (records["temperature"] == 19).all()
-    # speed is in m/s in the GPX extension, converted to km/h for consistency
-    # with FIT and TCX.
+    # speed is in m/s in the GPX extension, converted to km/h for consistency with FIT
+    # and TCX.
     assert records["speed"].tolist() == pytest.approx([18.0, 18.72, 19.44])
 
     # GPX has no lap information
@@ -132,8 +128,8 @@ def test_gpx_multiple_track_segments():
 
 
 def test_gpx_no_time_rows_dropped():
-    # Trackpoints without a <time> element get a NaT index; these should be
-    # dropped rather than collapsed together as "duplicate" NaT timestamps.
+    # Trackpoints without a <time> element get a NaT index; these should be dropped
+    # rather than collapsed together as "duplicate" NaT timestamps.
     records, _, _ = ActivityParser().parse(NO_TIME_GPX)
     assert len(records) == 2
     assert records["heart_rate"].tolist() == [100, 101]
@@ -155,8 +151,8 @@ def test_gz_round_trip(path, tmp_path):
 
 
 def test_malformed_xml_recovery(tmp_path):
-    # Truncate mid-document: strict parsing raises, recovery parses the
-    # trackpoints that survive
+    # Truncate mid-document: strict parsing raises, recovery parses the trackpoints that
+    # survive
     truncated = tmp_path / "truncated.tcx"
     truncated.write_text(SAMPLE_TCX.read_text()[:2500])
 

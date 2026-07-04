@@ -41,11 +41,10 @@ def infer_extension(file: str | PathLike[str]) -> str:
 class ActivityParser:
     """Parser for FIT, GPX and TCX files.
 
-    Each instance of this class is a parser object that can be used to import
-    FIT, GPX and TCX files into DataFrames. During parsing, the column names in
-    the resulting DataFrames are normalized to a standard set of names to allow
-    for more interchangeable use of DataFrames from the different activity file
-    types.
+    Each instance of this class is a parser object that can be used to import FIT, GPX
+    and TCX files into DataFrames. During parsing, the column names in the resulting
+    DataFrames are normalized to a standard set of names to allow for more
+    interchangeable use of DataFrames from the different activity file types.
     """
 
     def __init__(self, strict_xml: bool = False) -> None:
@@ -57,9 +56,9 @@ class ActivityParser:
         """
         self.strict_xml = strict_xml
 
-        # 'Selectors' specify the list and order of columns to be copied from
-        # each DataFrame (records and laps for each file type), and 'mappers'
-        # translate the imported column names into canonical names
+        # 'Selectors' specify the list and order of columns to be copied from each
+        # DataFrame (records and laps for each file type), and 'mappers' translate the
+        # imported column names into canonical names
 
         self.fit_records_selector = [
             "position_lat",
@@ -216,18 +215,18 @@ class ActivityParser:
     ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
         """Loads a FIT, TCX or GPX activity into Pandas DataFrames.
 
-        During import, column names in ``records`` and ``laps`` are
-        normalized into a canonical set of names. Note this function does not
-        guarantee that all canonical columns appear in the output, it only
-        renames the columns that are present in the activity file.
+        During import, column names in ``records`` and ``laps`` are normalized into a
+        canonical set of names. Note this function does not guarantee that all canonical
+        columns appear in the output, it only renames the columns that are present in
+        the activity file.
 
         Args:
-            file: Binary file-like or path-like object. A path-like argument
-                ending in '.gz' will be unzipped before processing.
-            ext: String of value ``FIT``, ``TCX``, or ``GPX`` that specifies
-                the file type. Must be provided if ``file`` is a file-like
-                object. Optional if ``file`` is a path-like object (the file
-                type will be inferred from the file name).
+            file: Binary file-like or path-like object. A path-like argument ending in
+                '.gz' will be unzipped before processing.
+            ext: String of value ``FIT``, ``TCX``, or ``GPX`` that specifies the file
+                type. Must be provided if ``file`` is a file-like object. Optional if
+                ``file`` is a path-like object (the file type will be inferred from the
+                file name).
 
         Returns:
             Tuple containing records, laps, and selected extra metadata.
@@ -237,9 +236,7 @@ class ActivityParser:
         elif isinstance(file, (str, PathLike)):
             ext_normalized = infer_extension(file)
         else:
-            raise ValueError(
-                "ext must be provided when file is a file-like object."
-            )
+            raise ValueError("ext must be provided when file is a file-like object.")
 
         if ext_normalized == "fit":
             records, laps, extra = parse_fit(file)

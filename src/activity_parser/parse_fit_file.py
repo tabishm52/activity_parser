@@ -21,20 +21,13 @@ def copy_fit_frames(
     """Yields FIT data frames from a file-like object."""
     processor = fitdecode.StandardUnitsDataProcessor()
     for frame in fitdecode.FitReader(fit_file, processor=processor):
-        if (
-            isinstance(frame, fitdecode.FitDataMessage)
-            and frame.mesg_type is not None
-        ):
+        if isinstance(frame, fitdecode.FitDataMessage) and frame.mesg_type is not None:
             yield frame
 
 
 def frame_to_dict(frame: fitdecode.FitDataMessage) -> dict[str, Any]:
     """Convert one FIT frame to a dict, dropping unknown fields."""
-    return {
-        field.name: field.value
-        for field in frame.fields
-        if field.field is not None
-    }
+    return {field.name: field.value for field in frame.fields if field.field is not None}
 
 
 def parse_fit_frames(
@@ -88,13 +81,13 @@ def parse_fit(
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     """Loads a FIT activity into Pandas DataFrames.
 
-    FIT frames and data fields that are marked as 'unknown' by fitdecode are
-    dropped during import. Assumes that the FIT file is all one activity, i.e.
-    chained FIT files will be merged into one set of return values.
+    FIT frames and data fields that are marked as 'unknown' by fitdecode are dropped
+    during import. Assumes that the FIT file is all one activity, i.e. chained FIT files
+    will be merged into one set of return values.
 
     Args:
-        file: File-like or path-like object. A path-like argument ending in
-            '.gz' will be unzipped before processing.
+        file: File-like or path-like object. A path-like argument ending in '.gz' will
+            be unzipped before processing.
 
     Returns:
         Tuple containing records, laps, and additional metadata.
