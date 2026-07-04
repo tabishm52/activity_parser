@@ -116,6 +116,9 @@ def test_gpx_records_values():
     assert records["cadence"].tolist() == [80, 81, 82]
     assert records["power"].tolist() == [200, 210, 220]
     assert (records["temperature"] == 19).all()
+    # speed is in m/s in the GPX extension, converted to km/h for consistency
+    # with FIT and TCX.
+    assert records["speed"].tolist() == pytest.approx([18.0, 18.72, 19.44])
 
     # GPX has no lap information
     assert laps.empty

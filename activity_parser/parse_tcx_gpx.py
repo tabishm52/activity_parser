@@ -15,6 +15,7 @@ NUMERIC_EXACT_COLUMNS = {
     "cad",
     "power",
     "atemp",
+    "speed",
     "Watts",
     "DistanceMeters",
     "AltitudeMeters",
@@ -101,14 +102,12 @@ def cleanup_xml_dataframe(df: pd.DataFrame, time_col: str) -> pd.DataFrame:
         df[time_col] = pd.NaT
 
     # Conversion from meters and m/s to km and kph is done to align with
-    # processing done by fitdecode.StandardUnitsDataProcessor. Note these column
-    # names apply to TCX files only; GPX files don't seem to have distance and
-    # speed information.
+    # processing done by fitdecode.StandardUnitsDataProcessor
     for col in df.columns:
-        if "Distance" in col:
+        if "distance" in col.lower():
             df[col] = df[col] / 1000.0
             df = df.rename(columns={col: col.replace("Meters", "Km")})
-        if "Speed" in col:
+        if "speed" in col.lower():
             df[col] = df[col] * 60.0 * 60.0 / 1000.0
 
     return df
