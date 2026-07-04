@@ -209,7 +209,7 @@ class ActivityParser:
 
     def parse(
         self,
-        file: str | PathLike[str] | IO[str] | IO[bytes],
+        file: str | PathLike[str] | IO[bytes],
         ext: str | None = None,
     ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
         """Loads a FIT, TCX or GPX activity into Pandas DataFrames.
@@ -220,8 +220,8 @@ class ActivityParser:
         renames the columns that are present in the activity file.
 
         Args:
-            file: File-like or path-like object. A path-like argument ending in
-                '.gz' will be unzipped before processing.
+            file: Binary file-like or path-like object. A path-like argument
+                ending in '.gz' will be unzipped before processing.
             ext: String of value ``FIT``, ``TCX``, or ``GPX`` that specifies
                 the file type. Must be provided if ``file`` is a file-like
                 object. Optional if ``file`` is a path-like object (the file

@@ -4,24 +4,29 @@ import gzip
 from collections.abc import Iterator
 from os import PathLike
 from pathlib import Path
-from typing import Any, BinaryIO
+from typing import IO, TYPE_CHECKING, Any
 
 import fitdecode
 import pandas as pd
 
+if TYPE_CHECKING:
+    from _typeshed import SupportsRead
 
-def copy_fit_frames(fit_file: BinaryIO) -> Iterator[Any]:
+
+def copy_fit_frames(
+    fit_file: SupportsRead[bytes],
+) -> Iterator[fitdecode.FitDataMessage]:
     """Yields FIT data frames from a file-like object."""
     processor = fitdecode.StandardUnitsDataProcessor()
     for frame in fitdecode.FitReader(fit_file, processor=processor):
         if (
-            frame.frame_type == fitdecode.FIT_FRAME_DATA
+            isinstance(frame, fitdecode.FitDataMessage)
             and frame.mesg_type is not None
         ):
             yield frame
 
 
-def frame_to_dict(frame: Any) -> dict[str, Any]:
+def frame_to_dict(frame: fitdecode.FitDataMessage) -> dict[str, Any]:
     """Convert one FIT frame to a dict, dropping unknown fields."""
     return {
         field.name: field.value
@@ -31,7 +36,7 @@ def frame_to_dict(frame: Any) -> dict[str, Any]:
 
 
 def parse_fit_frames(
-    fit_file: BinaryIO,
+    fit_file: SupportsRead[bytes],
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     """Parse FIT frames from an open file object."""
     records_rows: list[dict[str, Any]] = []
@@ -77,7 +82,7 @@ def parse_fit_frames(
 
 
 def parse_fit(
-    file: str | PathLike[str] | BinaryIO,
+    file: str | PathLike[str] | IO[bytes],
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     """Loads a FIT activity into Pandas DataFrames.
 

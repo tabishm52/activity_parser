@@ -22,7 +22,7 @@ def test_parse_fit_records_index(path):
     assert records.index.name == "timestamp"
     assert isinstance(records.index, pd.DatetimeIndex)
     assert records.index.is_unique
-    assert records.index.notna().all()
+    assert not records.index.hasnans
     assert len(laps) == 1
     assert "session" in extra
     assert "file_id" in extra
