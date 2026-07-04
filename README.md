@@ -1,5 +1,7 @@
 # activity-parser
 
+[![CI](https://github.com/tabishm52/activity_parser/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/tabishm52/activity_parser/actions/workflows/ci.yml)
+
 Parser for loading FIT, TCX and GPX activity files into Pandas DataFrames.
 
 Provides a parser object for reading (optionally gzipped) FIT, TCX, and GPX activity files and converting them into Pandas DataFrames.
