@@ -107,6 +107,9 @@ def cleanup_xml_dataframe(df: pd.DataFrame, time_col: str) -> pd.DataFrame:
     # Conversion from meters and m/s to km and kph is done to align with processing done
     # by fitdecode.StandardUnitsDataProcessor
     for col in df.columns:
+        # Columns that failed numeric coercion above are still strings; leave them as-is
+        if not pd.api.types.is_numeric_dtype(df[col]):
+            continue
         if "distance" in col.lower():
             df[col] = df[col] / 1000.0
             df = df.rename(columns={col: col.replace("Meters", "Km")})

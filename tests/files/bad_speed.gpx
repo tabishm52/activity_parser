@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx creator="activity_parser tests" version="1.1"
+    xmlns="http://www.topografix.com/GPX/1/1"
+    xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v2">
+  <trk>
+    <name>Bad Speed Track</name>
+    <trkseg>
+      <trkpt lat="37.0000" lon="-122.0000">
+        <ele>10.0</ele>
+        <time>2026-01-05T08:00:00Z</time>
+        <extensions>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:hr>100</gpxtpx:hr>
+            <gpxtpx:speed>5.0</gpxtpx:speed>
+          </gpxtpx:TrackPointExtension>
+        </extensions>
+      </trkpt>
+      <!-- Non-numeric speed: column skips coercion, so unit conversion must skip it too -->
+      <trkpt lat="37.0001" lon="-122.0001">
+        <ele>11.0</ele>
+        <time>2026-01-05T08:00:01Z</time>
+        <extensions>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:hr>101</gpxtpx:hr>
+            <gpxtpx:speed>n/a</gpxtpx:speed>
+          </gpxtpx:TrackPointExtension>
+        </extensions>
+      </trkpt>
+      <trkpt lat="37.0002" lon="-122.0002">
+        <ele>12.0</ele>
+        <time>2026-01-05T08:00:02Z</time>
+        <extensions>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:hr>102</gpxtpx:hr>
+            <gpxtpx:speed>5.4</gpxtpx:speed>
+          </gpxtpx:TrackPointExtension>
+        </extensions>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

@@ -19,6 +19,7 @@ NO_TIME_TCX = FILES / "no_time.tcx"
 NO_TIME_GPX = FILES / "no_time.gpx"
 MIXED_OFFSET_TCX = FILES / "mixed_offset.tcx"
 MIXED_OFFSET_GPX = FILES / "mixed_offset.gpx"
+BAD_SPEED_GPX = FILES / "bad_speed.gpx"
 
 
 def test_should_coerce_numeric():
@@ -153,6 +154,17 @@ def test_gpx_no_time_rows_dropped():
     records, _, _ = ActivityParser().parse(NO_TIME_GPX)
     assert len(records) == 2
     assert records["heart_rate"].tolist() == [100, 101]
+
+
+def test_gpx_non_numeric_speed_passed_through():
+    # One non-numeric speed value means the column skips numeric coercion; the m/s ->
+    # km/h conversion must then skip it too (arithmetic on strings raises) and pass the
+    # raw values through unchanged.
+    records, _, _ = ActivityParser().parse(BAD_SPEED_GPX)
+    assert len(records) == 3
+    assert records["speed"].tolist() == ["5.0", "n/a", "5.4"]
+    # Other columns still coerce and convert normally
+    assert records["heart_rate"].tolist() == [100, 101, 102]
 
 
 def test_gpx_mixed_offset_times():
