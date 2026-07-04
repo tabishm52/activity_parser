@@ -1,6 +1,9 @@
 # activity-parser
 
 [![CI](https://github.com/tabishm52/activity_parser/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/tabishm52/activity_parser/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/activity-parser)](https://pypi.org/project/activity-parser/)
+[![Python versions](https://img.shields.io/pypi/pyversions/activity-parser)](https://pypi.org/project/activity-parser/)
+[![License](https://img.shields.io/pypi/l/activity-parser)](https://pypi.org/project/activity-parser/)
 
 Parser for loading FIT, TCX and GPX activity files into Pandas DataFrames.
 
@@ -68,7 +71,3 @@ Any exporter that emits `v2` (or another extension exposing a `speed`-named fiel
 
 `laps` follows the same convention for shared metrics (`total_distance`, `avg_speed`, `max_speed`, `avg_heart_rate`, `avg_power`, `total_calories`, etc.).
 FIT also exposes FIT-specific fields not available from TCX/GPX (e.g. `fractional_cadence`, `left_right_balance`, `accumulated_power`) under their native FIT names.
-
-## License
-
-MIT
