@@ -12,3 +12,4 @@ Minimal fixtures written for this test suite, with round-number values chosen so
 - `no_position.tcx` — trackpoints with no `<Position>` element.
 - `multi_segment.gpx` — a track split across multiple `<trkseg>` elements, which should merge into one records frame.
 - `no_time.tcx`, `no_time.gpx` — include two consecutive trackpoints missing their time element, to exercise dropping NaT-indexed rows instead of collapsing them together as duplicates.
+- `mixed_offset.tcx`, `mixed_offset.gpx` — trackpoints with mixed UTC-offset and naive timestamps, to exercise normalizing to UTC.

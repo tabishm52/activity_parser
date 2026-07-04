@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2"
+    xmlns:ns3="http://www.garmin.com/xmlschemas/ActivityExtension/v2">
+  <Activities>
+    <Activity Sport="Biking">
+      <Id>2026-03-08T09:59:59Z</Id>
+      <Lap StartTime="2026-03-08T09:59:59Z">
+        <TotalTimeSeconds>2.0</TotalTimeSeconds>
+        <DistanceMeters>0.0</DistanceMeters>
+        <Calories>1</Calories>
+        <Intensity>Active</Intensity>
+        <TriggerMethod>Manual</TriggerMethod>
+        <Track>
+          <!-- Explicit non-UTC offset, e.g. local time before a DST transition -->
+          <Trackpoint>
+            <Time>2026-03-08T01:59:59-08:00</Time>
+            <Position>
+              <LatitudeDegrees>37.0000</LatitudeDegrees>
+              <LongitudeDegrees>-122.0000</LongitudeDegrees>
+            </Position>
+            <HeartRateBpm><Value>100</Value></HeartRateBpm>
+          </Trackpoint>
+          <!-- Different offset, e.g. local time after the same DST transition -->
+          <Trackpoint>
+            <Time>2026-03-08T03:00:00-07:00</Time>
+            <Position>
+              <LatitudeDegrees>37.0001</LatitudeDegrees>
+              <LongitudeDegrees>-122.0001</LongitudeDegrees>
+            </Position>
+            <HeartRateBpm><Value>101</Value></HeartRateBpm>
+          </Trackpoint>
+          <!-- No offset at all: naive timestamp, spec-legal per xsd:dateTime -->
+          <Trackpoint>
+            <Time>2026-03-08T04:00:00</Time>
+            <Position>
+              <LatitudeDegrees>37.0002</LatitudeDegrees>
+              <LongitudeDegrees>-122.0002</LongitudeDegrees>
+            </Position>
+            <HeartRateBpm><Value>102</Value></HeartRateBpm>
+          </Trackpoint>
+        </Track>
+      </Lap>
+    </Activity>
+  </Activities>
+</TrainingCenterDatabase>

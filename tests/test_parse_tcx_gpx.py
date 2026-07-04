@@ -17,6 +17,8 @@ NO_POSITION_TCX = FILES / "no_position.tcx"
 MULTI_SEGMENT_GPX = FILES / "multi_segment.gpx"
 NO_TIME_TCX = FILES / "no_time.tcx"
 NO_TIME_GPX = FILES / "no_time.gpx"
+MIXED_OFFSET_TCX = FILES / "mixed_offset.tcx"
+MIXED_OFFSET_GPX = FILES / "mixed_offset.gpx"
 
 
 def test_should_coerce_numeric():
@@ -61,7 +63,8 @@ def test_tcx_laps():
 
     assert len(laps) == 2
     assert laps["lap_trigger"].tolist() == ["Manual", "Manual"]
-    assert laps["total_elapsed_time"].astype(float).tolist() == [3.0, 2.0]
+    assert laps["total_elapsed_time"].dtype == "float64"
+    assert laps["total_elapsed_time"].tolist() == [3.0, 2.0]
     # DistanceMeters converted to km
     assert laps["total_distance"].tolist() == pytest.approx([0.02, 0.02])
     # MaximumSpeed converted from m/s to km/h
@@ -91,6 +94,23 @@ def test_tcx_no_time_rows_dropped():
     records, _, _ = ActivityParser().parse(NO_TIME_TCX)
     assert len(records) == 2
     assert records["heart_rate"].tolist() == [100, 101]
+
+
+def test_tcx_mixed_offset_times():
+    # xsd:dateTime allows explicit non-UTC offsets and naive (no-offset) values; all
+    # three trackpoints should parse and normalize to UTC rather than raising or being
+    # coerced to NaT and dropped.
+    records, _, _ = ActivityParser().parse(MIXED_OFFSET_TCX)
+    assert len(records) == 3
+    index = records.index
+    assert isinstance(index, pd.DatetimeIndex)
+    assert index.tz is not None
+    assert index.tolist() == [
+        pd.Timestamp("2026-03-08T09:59:59Z"),
+        pd.Timestamp("2026-03-08T10:00:00Z"),
+        pd.Timestamp("2026-03-08T04:00:00Z"),
+    ]
+    assert records["heart_rate"].tolist() == [100, 101, 102]
 
 
 # ---------------------------------------------------------------------------
@@ -133,6 +153,23 @@ def test_gpx_no_time_rows_dropped():
     records, _, _ = ActivityParser().parse(NO_TIME_GPX)
     assert len(records) == 2
     assert records["heart_rate"].tolist() == [100, 101]
+
+
+def test_gpx_mixed_offset_times():
+    # xsd:dateTime allows explicit non-UTC offsets and naive (no-offset) values; all
+    # three trackpoints should parse and normalize to UTC rather than raising or being
+    # coerced to NaT and dropped.
+    records, _, _ = ActivityParser().parse(MIXED_OFFSET_GPX)
+    assert len(records) == 3
+    index = records.index
+    assert isinstance(index, pd.DatetimeIndex)
+    assert index.tz is not None
+    assert index.tolist() == [
+        pd.Timestamp("2026-03-08T09:59:59Z"),
+        pd.Timestamp("2026-03-08T10:00:00Z"),
+        pd.Timestamp("2026-03-08T04:00:00Z"),
+    ]
+    assert records["heart_rate"].tolist() == [100, 101, 102]
 
 
 # ---------------------------------------------------------------------------
