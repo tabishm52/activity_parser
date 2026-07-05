@@ -31,6 +31,7 @@ MIXED_CONTENT_TCX = FILES / "mixed_content.tcx"
 VENDOR_TYPE_ATTRIBUTE_TCX = FILES / "vendor_type_attribute.tcx"
 DUPLICATE_CADENCE_TCX = FILES / "duplicate_cadence.tcx"
 LAPS_ONLY_TCX = FILES / "laps_only.tcx"
+EXTRA_VENDOR_TYPE_ATTRIBUTE_TCX = FILES / "extra_vendor_type_attribute.tcx"
 
 
 # ---------------------------------------------------------------------------
@@ -83,6 +84,13 @@ def test_tcx_extra():
     _, _, extra = ActivityParser().parse(SAMPLE_TCX)
     assert extra["Sport"] == "Biking"
     assert "schemaLocation" not in extra
+
+
+def test_tcx_extra_type_attribute_only_skipped_for_xsi_namespace():
+    # Only genuine xsi:type is schema-validation metadata; a same-named attribute in
+    # another namespace is real data and must be kept.
+    _, _, extra = ActivityParser().parse(EXTRA_VENDOR_TYPE_ATTRIBUTE_TCX)
+    assert extra["type"] == "vendor-real-data"
 
 
 def test_tcx_without_position():

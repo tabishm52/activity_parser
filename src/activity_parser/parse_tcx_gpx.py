@@ -46,9 +46,10 @@ def extract_xml_fields(
     for el in element.iter("*"):
         # Some (name, value) pairs are stored as XML attributes
         for key, value in el.attrib.items():
-            localname = etree.QName(key).localname
-            if localname != "type":
-                yield localname, cast(str, value)
+            qname = etree.QName(key)
+            if qname.namespace == XSI_NS and qname.localname == "type":
+                continue
+            yield qname.localname, cast(str, value)
 
         # In a TCX file, some values are buried in a 'Value' element
         if el.text is None or el.text.isspace():
