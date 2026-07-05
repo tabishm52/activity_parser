@@ -17,10 +17,12 @@ if TYPE_CHECKING:
 
 def copy_fit_frames(
     fit_file: SupportsRead[bytes],
+    check_crc: bool,
 ) -> Iterator[fitdecode.FitDataMessage]:
     """Yields FIT data frames from a file-like object."""
     processor = fitdecode.StandardUnitsDataProcessor()
-    for frame in fitdecode.FitReader(fit_file, processor=processor):
+    crc_mode = fitdecode.CrcCheck.RAISE if check_crc else fitdecode.CrcCheck.DISABLED
+    for frame in fitdecode.FitReader(fit_file, processor=processor, check_crc=crc_mode):
         if isinstance(frame, fitdecode.FitDataMessage):
             yield frame
 
@@ -32,13 +34,14 @@ def frame_to_dict(frame: fitdecode.FitDataMessage) -> dict[str, Any]:
 
 def parse_fit_frames(
     fit_file: SupportsRead[bytes],
+    check_crc: bool = False,
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     """Parse FIT frames from an open file object."""
     records_rows: list[dict[str, Any]] = []
     laps_rows: list[dict[str, Any]] = []
     extra_rows: dict[str, list[dict[str, Any]]] = {}
 
-    for frame in copy_fit_frames(fit_file):
+    for frame in copy_fit_frames(fit_file, check_crc=check_crc):
         row = frame_to_dict(frame)
         if frame.name == "record":
             records_rows.append(row)
@@ -78,6 +81,7 @@ def parse_fit_frames(
 
 def parse_fit(
     file: str | PathLike[str] | IO[bytes],
+    check_crc: bool = False,
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     """Loads a FIT activity into Pandas DataFrames.
 
@@ -88,6 +92,7 @@ def parse_fit(
     Args:
         file: File-like or path-like object. A path-like argument ending in ``.gz`` will
             be unzipped before processing.
+        check_crc: If True, raise on a CRC mismatch instead of skipping verification.
 
     Returns:
         Tuple containing records, laps, and additional metadata.
@@ -98,8 +103,8 @@ def parse_fit(
         ext = Path(file).suffix
         opener = gzip.open if ext.lower() == ".gz" else open
         with opener(file, "rb") as fit_file:
-            records, laps, extra = parse_fit_frames(fit_file)
+            records, laps, extra = parse_fit_frames(fit_file, check_crc=check_crc)
     else:
-        records, laps, extra = parse_fit_frames(file)
+        records, laps, extra = parse_fit_frames(file, check_crc=check_crc)
 
     return records, laps, extra
