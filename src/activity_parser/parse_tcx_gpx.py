@@ -18,7 +18,6 @@ from .xml_fields import (
     GPX_TRACKPOINT_FIELDS,
     TCX_LAP_FIELDS,
     TCX_TRACKPOINT_FIELDS,
-    Convert,
     FieldPath,
     FieldPathStep,
     XmlField,
@@ -122,34 +121,8 @@ def build_dataframe(
 
     for col in df.columns:
         convert = converts.get(col)
-        if convert is None or convert is Convert.STRING:
-            continue
-
-        if convert is Convert.DATETIME:
-            # Without format="ISO8601", timestamps mixing naive and UTC-offset values in
-            # the same column silently become NaT instead of parsing.
-            df[col] = pd.to_datetime(df[col], errors="coerce", utc=True, format="ISO8601")
-            continue
-
-        values = df[col]
-        non_null = values.notna().sum()
-        if non_null == 0:
-            continue
-
-        numeric_values = pd.to_numeric(values, errors="coerce")
-        if numeric_values.notna().sum() != non_null:
-            # Some values genuinely aren't numeric; leave the column as raw strings
-            # rather than partially coercing it.
-            continue
-
-        # Conversion from meters and m/s to km and kph is done to align with processing
-        # done by fitdecode.StandardUnitsDataProcessor
-        if convert is Convert.NUMERIC_M_TO_KM:
-            df[col] = numeric_values / 1000.0
-        elif convert is Convert.NUMERIC_MS_TO_KMH:
-            df[col] = numeric_values * 3.6
-        else:
-            df[col] = numeric_values
+        if convert is not None:
+            df[col] = convert(df[col])
 
     return df
 

@@ -10,12 +10,14 @@ from activity_parser.xml_fields import (
     GPX11_NS,
     GPX_TRACKPOINT_FIELDS,
     GPXDATA_NS,
+    NUMERIC,
+    NUMERIC_M_TO_KM,
+    NUMERIC_MS_TO_KMH,
     TCX_LAP_FIELDS,
     TCX_NS,
     TCX_TRACKPOINT_FIELDS,
     TPX1_NS,
     TPX2_NS,
-    Convert,
     XmlField,
     column_converts,
 )
@@ -57,18 +59,18 @@ def test_no_conflicting_converts_within_table(table_name):
 
 def test_distance_converts_meters_to_km():
     field = TCX_TRACKPOINT_FIELDS[((TCX_NS, "DistanceMeters"),)]
-    assert field == XmlField("distance", Convert.NUMERIC_M_TO_KM)
+    assert field == XmlField("distance", NUMERIC_M_TO_KM)
 
 
 def test_speed_converts_ms_to_kmh():
     field = TCX_TRACKPOINT_FIELDS[((TCX_NS, "Extensions"), (AEXT_NS, "TPX"), (AEXT_NS, "Speed"))]
-    assert field.convert == Convert.NUMERIC_MS_TO_KMH
+    assert field.convert is NUMERIC_MS_TO_KMH
 
 
 def test_gpx10_and_gpx11_share_base_fields():
     gpx10_altitude = GPX_TRACKPOINT_FIELDS[((GPX10_NS, "ele"),)]
     gpx11_altitude = GPX_TRACKPOINT_FIELDS[((GPX11_NS, "ele"),)]
-    assert gpx10_altitude == gpx11_altitude == XmlField("altitude", Convert.NUMERIC)
+    assert gpx10_altitude == gpx11_altitude == XmlField("altitude", NUMERIC)
 
 
 def test_gpx10_has_no_extensions_wrapper_fields():
@@ -79,5 +81,5 @@ def test_gpx10_has_no_extensions_wrapper_fields():
 
 def test_column_converts_maps_synonyms_consistently():
     converts = column_converts(TCX_TRACKPOINT_FIELDS)
-    assert converts["cadence"] == Convert.NUMERIC
-    assert converts["distance"] == Convert.NUMERIC_M_TO_KM
+    assert converts["cadence"] is NUMERIC
+    assert converts["distance"] is NUMERIC_M_TO_KM

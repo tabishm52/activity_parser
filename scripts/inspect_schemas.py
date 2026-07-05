@@ -33,12 +33,12 @@ from activity_parser.xml_fields import (
     GPX11_NS,
     GPX_TRACKPOINT_FIELDS,
     GPXDATA_NS,
+    NUMERIC_CONVERTERS,
     TCX_LAP_FIELDS,
     TCX_NS,
     TCX_TRACKPOINT_FIELDS,
     TPX1_NS,
     TPX2_NS,
-    Convert,
     FieldPath,
     XmlField,
     column_converts,
@@ -103,7 +103,7 @@ def _record_coercion_failures(
     df: pd.DataFrame, fields: dict[FieldPath, XmlField], failures: dict[str, str]
 ) -> None:
     for column, convert in column_converts(fields).items():
-        if convert in (Convert.STRING, Convert.DATETIME) or column not in df.columns:
+        if convert not in NUMERIC_CONVERTERS or column not in df.columns:
             continue
         if pd.api.types.is_numeric_dtype(df[column]):
             continue
