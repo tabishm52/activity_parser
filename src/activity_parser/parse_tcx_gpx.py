@@ -68,25 +68,27 @@ def extract_xml_fields(
 
 
 def walk_fields(element: etree._Element) -> Iterator[tuple[FieldPath, str]]:
-    """Yields (path, value) pairs for every attribute and leaf element under ``element``.
+    """Yields (path, value) for every attribute and leaf element under ``element``.
 
-    ``path`` is the sequence of ``(namespace, localname)`` steps from ``element`` down
-    to the attribute or leaf, matching the keys of the tables in ``xml_fields``.
-    Attribute steps are marked with a "@" localname prefix. Comments are skipped
-    automatically by iterating children with ``"*"``.
+    ``path`` matches the keys of the field tables in ``xml_fields``. XML comments are
+    skipped.
     """
     yield from _walk(element, ())
 
 
 def _walk(element: etree._Element, path: FieldPath) -> Iterator[tuple[FieldPath, str]]:
+    """Recursive implementation of ``walk_fields``; ``path`` is the walk so far."""
     for key, value in element.attrib.items():
         qname = etree.QName(key)
         if qname.localname == "type":
+            # xsi:type is schema-validation metadata, not activity data.
             continue
         yield path + ((qname.namespace, "@" + qname.localname),), cast(str, value)
 
+    # "*" matches only true elements, so comments are skipped without special-casing.
     children = list(element.iterchildren("*"))
     if element.text is not None and not element.text.isspace():
+        # Assumes elements are either a leaf-with-text or a container, never both.
         yield path, element.text
     elif children:
         for child in children:
@@ -104,6 +106,7 @@ def unknown_column_name(step: FieldPathStep) -> str:
 def _row_from_fields(
     element: etree._Element, fields: Mapping[FieldPath, XmlField]
 ) -> dict[str, str]:
+    """Maps ``element``'s fields to a row dict, keyed by canonical or unknown column."""
     row: dict[str, str] = {}
     for path, value in _walk(element, ()):
         field = fields.get(path)
@@ -128,6 +131,7 @@ def build_dataframe(
 
 
 def _index_by_time(records: pd.DataFrame) -> pd.DataFrame:
+    """Sets ``time`` as the index, dropping rows with no timestamp or a duplicate one."""
     if "time" not in records.columns:
         records["time"] = pd.NaT
     records = records.set_index("time")
