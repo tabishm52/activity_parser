@@ -73,7 +73,6 @@ def _numeric_scale(factor: float) -> Converter:
 NUMERIC: Converter = _numeric_scale(1.0)
 NUMERIC_M_TO_KM: Converter = _numeric_scale(1 / 1000)
 NUMERIC_MS_TO_KMH: Converter = _numeric_scale(3.6)
-NUMERIC_CONVERTERS = frozenset({NUMERIC, NUMERIC_M_TO_KM, NUMERIC_MS_TO_KMH})
 
 
 @dataclass(frozen=True)

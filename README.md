@@ -85,14 +85,3 @@ This means a device or app using an extension schema this library doesn't know a
 
 `ActivityParser.parse()` (the high-level entry point) filters these out, returning only the canonical columns listed above.
 Use the lower-level `parse_tcx`/`parse_gpx` functions directly if you need access to unrecognized columns.
-
-## Inspecting files
-
-`scripts/inspect_schemas.py` reports which schemas and extensions a TCX/GPX file (or directory of files) actually uses, and flags any data that didn't fit the known field tables:
-
-```bash
-uv run python scripts/inspect_schemas.py path/to/activity.gpx
-uv run python scripts/inspect_schemas.py path/to/strava_export/
-```
-
-This is useful both to sanity-check a new export source and, when a device uses an unrecognized extension, as a starting point for extending `activity_parser.xml_fields`.
