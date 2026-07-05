@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gpx creator="activity_parser tests" version="1.1"
-    xmlns="http://www.topografix.com/GPX/1/1">
+    xmlns="http://www.topografix.com/GPX/1/1"
+    xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v2">
   <trk>
     <name>Mixed Offset Track</name>
     <trkseg>
@@ -9,7 +10,9 @@
         <ele>10.0</ele>
         <time>2026-03-08T01:59:59-08:00</time>
         <extensions>
-          <hr>100</hr>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:hr>100</gpxtpx:hr>
+          </gpxtpx:TrackPointExtension>
         </extensions>
       </trkpt>
       <!-- Different offset, e.g. local time after the same DST transition -->
@@ -17,7 +20,9 @@
         <ele>11.0</ele>
         <time>2026-03-08T03:00:00-07:00</time>
         <extensions>
-          <hr>101</hr>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:hr>101</gpxtpx:hr>
+          </gpxtpx:TrackPointExtension>
         </extensions>
       </trkpt>
       <!-- No offset at all: naive timestamp, spec-legal per xsd:dateTime -->
@@ -25,7 +30,9 @@
         <ele>12.0</ele>
         <time>2026-03-08T04:00:00</time>
         <extensions>
-          <hr>102</hr>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:hr>102</gpxtpx:hr>
+          </gpxtpx:TrackPointExtension>
         </extensions>
       </trkpt>
     </trkseg>

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gpx creator="activity_parser tests" version="1.1"
-    xmlns="http://www.topografix.com/GPX/1/1">
+    xmlns="http://www.topografix.com/GPX/1/1"
+    xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v2">
   <trk>
     <name>No Time Track</name>
     <trkseg>
@@ -8,28 +9,36 @@
         <ele>10.0</ele>
         <time>2026-01-05T08:00:00Z</time>
         <extensions>
-          <hr>100</hr>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:hr>100</gpxtpx:hr>
+          </gpxtpx:TrackPointExtension>
         </extensions>
       </trkpt>
       <!-- No time element: should be dropped, not treated as a duplicate -->
       <trkpt lat="37.0001" lon="-122.0001">
         <ele>11.0</ele>
         <extensions>
-          <hr>999</hr>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:hr>999</gpxtpx:hr>
+          </gpxtpx:TrackPointExtension>
         </extensions>
       </trkpt>
       <!-- Second no-time point: should also be dropped, not merged with the first -->
       <trkpt lat="37.0002" lon="-122.0002">
         <ele>12.0</ele>
         <extensions>
-          <hr>999</hr>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:hr>999</gpxtpx:hr>
+          </gpxtpx:TrackPointExtension>
         </extensions>
       </trkpt>
       <trkpt lat="37.0003" lon="-122.0003">
         <ele>13.0</ele>
         <time>2026-01-05T08:00:01Z</time>
         <extensions>
-          <hr>101</hr>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:hr>101</gpxtpx:hr>
+          </gpxtpx:TrackPointExtension>
         </extensions>
       </trkpt>
     </trkseg>

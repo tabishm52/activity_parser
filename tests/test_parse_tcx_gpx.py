@@ -8,7 +8,7 @@ import pytest
 from lxml import etree
 
 from activity_parser import ActivityParser
-from activity_parser.parse_tcx_gpx import should_coerce_numeric
+from activity_parser.parse_tcx_gpx import parse_gpx, parse_tcx
 
 FILES = Path(__file__).parent / "files"
 SAMPLE_TCX = FILES / "sample.tcx"
@@ -20,14 +20,12 @@ NO_TIME_GPX = FILES / "no_time.gpx"
 MIXED_OFFSET_TCX = FILES / "mixed_offset.tcx"
 MIXED_OFFSET_GPX = FILES / "mixed_offset.gpx"
 BAD_SPEED_GPX = FILES / "bad_speed.gpx"
-
-
-def test_should_coerce_numeric():
-    assert should_coerce_numeric("lat")
-    assert should_coerce_numeric("HeartRateBpm")
-    assert should_coerce_numeric("MaximumSpeed")  # substring match
-    assert not should_coerce_numeric("Time")
-    assert not should_coerce_numeric("Notes")
+GPXTPX_V1_GPX = FILES / "gpxtpx_v1.gpx"
+GPXDATA_GPX = FILES / "gpxdata.gpx"
+UNKNOWN_EXTENSION_GPX = FILES / "unknown_extension.gpx"
+GPX10 = FILES / "gpx10.gpx"
+RUNNING_TCX = FILES / "running.tcx"
+CADENCE_COLLISION_TCX = FILES / "cadence_collision.tcx"
 
 
 # ---------------------------------------------------------------------------
@@ -114,6 +112,29 @@ def test_tcx_mixed_offset_times():
     assert records["heart_rate"].tolist() == [100, 101, 102]
 
 
+def test_tcx_run_cadence_extension():
+    # No base <Cadence> element; ActivityExtension's TPX/RunCadence populates cadence.
+    records, laps, _ = ActivityParser().parse(RUNNING_TCX)
+    assert records["cadence"].tolist() == [85, 86]
+    assert records["power"].tolist() == [250, 255]
+    assert records["speed"].tolist() == pytest.approx([10.8, 10.8])
+    # CadenceSensor is an attribute of the TPX element itself
+    assert records["cadence_sensor"].tolist() == ["Footpod", "Footpod"]
+    # LX lap extension fields
+    assert laps["avg_cadence"].tolist() == [85]
+    assert laps["max_cadence"].tolist() == [90]
+    assert laps["total_strides"].tolist() == [300]
+    assert laps["avg_power"].tolist() == [250]
+    assert laps["max_power"].tolist() == [260]
+    assert laps["avg_speed"].tolist() == pytest.approx([10.8])
+
+
+def test_tcx_base_cadence_beats_run_cadence():
+    # Both base Cadence and TPX RunCadence present: base wins (first walked).
+    records, _, _ = ActivityParser().parse(CADENCE_COLLISION_TCX)
+    assert records["cadence"].tolist() == [80]
+
+
 # ---------------------------------------------------------------------------
 # GPX
 # ---------------------------------------------------------------------------
@@ -184,6 +205,45 @@ def test_gpx_mixed_offset_times():
     assert records["heart_rate"].tolist() == [100, 101, 102]
 
 
+def test_gpx_track_point_extension_v1():
+    # v1 has no speed/course/bearing, unlike v2.
+    records, _, _ = ActivityParser().parse(GPXTPX_V1_GPX)
+    assert records["heart_rate"].tolist() == [100, 101]
+    assert records["cadence"].tolist() == [80, 81]
+    assert records["temperature"].tolist() == [18, 18]
+    assert records["water_temperature"].tolist() == [15, 15]
+    assert records["depth"].tolist() == pytest.approx([2.0, 2.1])
+    assert "speed" not in records.columns
+
+
+def test_gpx_cluetrust_gpxdata_extension():
+    records, _, _ = ActivityParser().parse(GPXDATA_GPX)
+    assert records["heart_rate"].tolist() == [100, 101]
+    assert records["cadence"].tolist() == [80, 81]
+    assert records["temperature"].tolist() == [19, 19]
+    assert records["distance"].tolist() == pytest.approx([0.0, 0.01])
+
+
+def test_gpx_unknown_extension_kept_as_namespaced_string():
+    records, _, _ = parse_gpx(UNKNOWN_EXTENSION_GPX)
+    column = "{urn:example:unknown-vendor}stress"
+    assert records[column].tolist() == ["42", "43"]
+    # Unrecognized columns aren't part of ActivityParser's canonical selector
+    normalized, _, _ = ActivityParser().parse(UNKNOWN_EXTENSION_GPX)
+    assert column not in normalized.columns
+
+
+def test_gpx_1_0_base_fields():
+    # GPX 1.0 exposes course/speed directly (no <extensions> wrapper) plus GPS-quality
+    # fields absent from the modern GPX 1.1 + gpxtpx combination tested elsewhere.
+    records, _, _ = ActivityParser().parse(GPX10)
+    assert records["course"].tolist() == pytest.approx([90.0, 91.0])
+    assert records["speed"].tolist() == pytest.approx([18.0, 18.72])
+    assert records["fix_type"].tolist() == ["3d", "3d"]
+    assert records["satellites"].tolist() == [8, 9]
+    assert records["hdop"].tolist() == pytest.approx([1.2, 1.1])
+
+
 # ---------------------------------------------------------------------------
 # gz handling and XML recovery
 # ---------------------------------------------------------------------------
@@ -210,3 +270,16 @@ def test_malformed_xml_recovery(tmp_path):
 
     records, _, _ = ActivityParser().parse(truncated)
     assert len(records) >= 1
+
+
+# ---------------------------------------------------------------------------
+# low-level parse_tcx/parse_gpx: unknown-element preservation
+# ---------------------------------------------------------------------------
+
+
+def test_parse_tcx_low_level_matches_high_level_known_columns():
+    # parse_tcx already emits canonical names; ActivityParser only narrows/orders them.
+    low_records, _, _ = parse_tcx(SAMPLE_TCX)
+    high_records, _, _ = ActivityParser().parse(SAMPLE_TCX)
+    for col in high_records.columns:
+        assert low_records[col].tolist() == high_records[col].tolist()

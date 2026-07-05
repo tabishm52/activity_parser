@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- TrackPointExtension/v1: same localnames as v2 (atemp, wtemp, depth, hr, cad) but a
+     different namespace URI, and no speed/course/bearing. -->
+<gpx creator="activity_parser tests" version="1.1"
+    xmlns="http://www.topografix.com/GPX/1/1"
+    xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1">
+  <trk>
+    <name>TrackPointExtension v1 Track</name>
+    <trkseg>
+      <trkpt lat="37.0000" lon="-122.0000">
+        <ele>10.0</ele>
+        <time>2026-01-05T08:00:00Z</time>
+        <extensions>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:atemp>18</gpxtpx:atemp>
+            <gpxtpx:wtemp>15</gpxtpx:wtemp>
+            <gpxtpx:depth>2.0</gpxtpx:depth>
+            <gpxtpx:hr>100</gpxtpx:hr>
+            <gpxtpx:cad>80</gpxtpx:cad>
+          </gpxtpx:TrackPointExtension>
+        </extensions>
+      </trkpt>
+      <trkpt lat="37.0001" lon="-122.0001">
+        <ele>11.0</ele>
+        <time>2026-01-05T08:00:01Z</time>
+        <extensions>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:atemp>18</gpxtpx:atemp>
+            <gpxtpx:wtemp>15</gpxtpx:wtemp>
+            <gpxtpx:depth>2.1</gpxtpx:depth>
+            <gpxtpx:hr>101</gpxtpx:hr>
+            <gpxtpx:cad>81</gpxtpx:cad>
+          </gpxtpx:TrackPointExtension>
+        </extensions>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

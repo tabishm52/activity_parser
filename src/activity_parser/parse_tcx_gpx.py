@@ -1,48 +1,29 @@
-"""Functions for parsing TCX and GPX files into Pandas DataFrames."""
+"""Functions for parsing TCX and GPX files into Pandas DataFrames.
 
-from collections.abc import Iterator
+Records and laps are extracted using the schema-derived field tables in
+``xml_fields``: known elements/attributes are converted to typed, canonically-named
+columns; anything else is still collected, namespace-qualified, as an uncoerced string
+column (see ``unknown_column_name``) so unrecognized extensions aren't silently
+dropped.
+"""
+
+from collections.abc import Iterable, Iterator, Mapping
 from os import PathLike
 from typing import IO, cast
 
 import pandas as pd
 from lxml import etree
 
-NUMERIC_EXACT_COLUMNS = {
-    "lat",
-    "lon",
-    "ele",
-    "hr",
-    "cad",
-    "power",
-    "atemp",
-    "speed",
-    "Watts",
-    "DistanceMeters",
-    "AltitudeMeters",
-    "HeartRateBpm",
-    "Cadence",
-    "LatitudeDegrees",
-    "LongitudeDegrees",
-    "TotalTimeSeconds",
-}
-
-NUMERIC_SUBSTRINGS = (
-    "Distance",
-    "Speed",
-    "Altitude",
-    "Cadence",
-    "HeartRate",
-    "Watts",
-    "Power",
-    "Calories",
+from .xml_fields import (
+    GPX_TRACKPOINT_FIELDS,
+    TCX_LAP_FIELDS,
+    TCX_TRACKPOINT_FIELDS,
+    Convert,
+    FieldPath,
+    FieldPathStep,
+    XmlField,
+    column_converts,
 )
-
-
-def should_coerce_numeric(column_name: str) -> bool:
-    """Return True when an XML-derived column should be numeric."""
-    if column_name in NUMERIC_EXACT_COLUMNS:
-        return True
-    return any(token in column_name for token in NUMERIC_SUBSTRINGS)
 
 
 def remove_elements(root: etree._Element, *tags: str) -> None:
@@ -56,7 +37,11 @@ def remove_elements(root: etree._Element, *tags: str) -> None:
 def extract_xml_fields(
     element: etree._Element,
 ) -> Iterator[tuple[str, str | None]]:
-    """Yields (name, value) pairs recursively through an XML element."""
+    """Yields (name, value) pairs recursively through an XML element.
+
+    Used for the ``extra`` metadata dict, which is intentionally left as a raw,
+    non-canonical slurp of whatever remains once records/laps are removed.
+    """
     # Iterating with "*" matches only true elements and drops e.g. comments
     for el in element.iter("*"):
         # Some (name, value) pairs are stored as XML attributes
@@ -83,10 +68,67 @@ def extract_xml_fields(
                 yield localname, el.text
 
 
-def cleanup_xml_dataframe(df: pd.DataFrame, time_col: str) -> pd.DataFrame:
-    """Common post-processing for DataFrames extracted from XML elements."""
+def walk_fields(element: etree._Element) -> Iterator[tuple[FieldPath, str]]:
+    """Yields (path, value) pairs for every attribute and leaf element under ``element``.
+
+    ``path`` is the sequence of ``(namespace, localname)`` steps from ``element`` down
+    to the attribute or leaf, matching the keys of the tables in ``xml_fields``.
+    Attribute steps are marked with a "@" localname prefix. Comments are skipped
+    automatically by iterating children with ``"*"``.
+    """
+    yield from _walk(element, ())
+
+
+def _walk(element: etree._Element, path: FieldPath) -> Iterator[tuple[FieldPath, str]]:
+    for key, value in element.attrib.items():
+        qname = etree.QName(key)
+        if qname.localname == "type":
+            continue
+        yield path + ((qname.namespace, "@" + qname.localname),), cast(str, value)
+
+    children = list(element.iterchildren("*"))
+    if element.text is not None and not element.text.isspace():
+        yield path, element.text
+    elif children:
+        for child in children:
+            child_qname = etree.QName(child)
+            yield from _walk(child, path + ((child_qname.namespace, child_qname.localname),))
+
+
+def unknown_column_name(step: FieldPathStep) -> str:
+    """Column name for a leaf not found in the field table: namespace-qualified."""
+    namespace, name = step
+    name = name.removeprefix("@")
+    return f"{{{namespace}}}{name}" if namespace else name
+
+
+def _row_from_fields(
+    element: etree._Element, fields: Mapping[FieldPath, XmlField]
+) -> dict[str, str]:
+    row: dict[str, str] = {}
+    for path, value in _walk(element, ()):
+        field = fields.get(path)
+        column = field.column if field is not None else unknown_column_name(path[-1])
+        row.setdefault(column, value)
+    return row
+
+
+def build_dataframe(
+    elements: Iterable[etree._Element], fields: Mapping[FieldPath, XmlField]
+) -> pd.DataFrame:
+    """Builds a DataFrame from ``elements`` using ``fields`` for typing/renaming."""
+    df = pd.DataFrame(_row_from_fields(element, fields) for element in elements)
+    converts = column_converts(fields)
+
     for col in df.columns:
-        if col == time_col or not should_coerce_numeric(str(col)):
+        convert = converts.get(col)
+        if convert is None or convert is Convert.STRING:
+            continue
+
+        if convert is Convert.DATETIME:
+            # Without format="ISO8601", timestamps mixing naive and UTC-offset values in
+            # the same column silently become NaT instead of parsing.
+            df[col] = pd.to_datetime(df[col], errors="coerce", utc=True, format="ISO8601")
             continue
 
         values = df[col]
@@ -95,29 +137,29 @@ def cleanup_xml_dataframe(df: pd.DataFrame, time_col: str) -> pd.DataFrame:
             continue
 
         numeric_values = pd.to_numeric(values, errors="coerce")
-        if numeric_values.notna().sum() == non_null:
+        if numeric_values.notna().sum() != non_null:
+            # Some values genuinely aren't numeric; leave the column as raw strings
+            # rather than partially coercing it.
+            continue
+
+        # Conversion from meters and m/s to km and kph is done to align with processing
+        # done by fitdecode.StandardUnitsDataProcessor
+        if convert is Convert.NUMERIC_M_TO_KM:
+            df[col] = numeric_values / 1000.0
+        elif convert is Convert.NUMERIC_MS_TO_KMH:
+            df[col] = numeric_values * 3.6
+        else:
             df[col] = numeric_values
 
-    if time_col in df.columns:
-        # Without format="ISO8601", timestamps mixing naive and UTC-offset values in
-        # the same column silently become NaT instead of parsing.
-        df[time_col] = pd.to_datetime(df[time_col], errors="coerce", utc=True, format="ISO8601")
-    else:
-        df[time_col] = pd.NaT
-
-    # Conversion from meters and m/s to km and kph is done to align with processing done
-    # by fitdecode.StandardUnitsDataProcessor
-    for col in df.columns:
-        # Columns that failed numeric coercion above are still strings; leave them as-is
-        if not pd.api.types.is_numeric_dtype(df[col]):
-            continue
-        if "distance" in col.lower():
-            df[col] = df[col] / 1000.0
-            df = df.rename(columns={col: col.replace("Meters", "Km")})
-        if "speed" in col.lower():
-            df[col] = df[col] * 60.0 * 60.0 / 1000.0
-
     return df
+
+
+def _index_by_time(records: pd.DataFrame) -> pd.DataFrame:
+    if "time" not in records.columns:
+        records["time"] = pd.NaT
+    records = records.set_index("time")
+    records = records[records.index.notna()]
+    return records[~records.index.duplicated()]
 
 
 def parse_tcx(
@@ -142,17 +184,12 @@ def parse_tcx(
     root = etree.parse(file, parser).getroot()
 
     # TCX files occasionally have duplicate timestamps, just drop those
-    records = pd.DataFrame(
-        dict(extract_xml_fields(element)) for element in root.iter("{*}Trackpoint")
-    )
-    records = cleanup_xml_dataframe(records, "Time").set_index("Time")
-    records = records[records.index.notna()]
-    records = records[~records.index.duplicated()]
+    records = build_dataframe(root.iter("{*}Trackpoint"), TCX_TRACKPOINT_FIELDS)
+    records = _index_by_time(records)
 
     remove_elements(root, "{*}Track")
 
-    laps = pd.DataFrame(dict(extract_xml_fields(element)) for element in root.iter("{*}Lap"))
-    laps = cleanup_xml_dataframe(laps, "StartTime")
+    laps = build_dataframe(root.iter("{*}Lap"), TCX_LAP_FIELDS)
 
     remove_elements(root, "{*}Lap")
 
@@ -181,17 +218,11 @@ def parse_gpx(
         Tuple containing records, laps, and additional metadata. Note GPX files don't
         have lap information, so the laps DataFrame will be empty.
     """
-    # Note there is a 'gpxpy' library that provides comprehensive handling of GPX files.
-    # Parsing the XML directly works for our purposes and keeps this consistent with
-    # how we handle TCX files above.
-
     parser = etree.XMLParser(recover=not strict_xml)
     root = etree.parse(file, parser).getroot()
 
-    records = pd.DataFrame(dict(extract_xml_fields(element)) for element in root.iter("{*}trkpt"))
-    records = cleanup_xml_dataframe(records, "time").set_index("time")
-    records = records[records.index.notna()]
-    records = records[~records.index.duplicated()]
+    records = build_dataframe(root.iter("{*}trkpt"), GPX_TRACKPOINT_FIELDS)
+    records = _index_by_time(records)
 
     remove_elements(root, "{*}trkseg", "{*}rte", "{*}wpt")
 

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Cluetrust gpxdata extension: hr, cadence, temp, distance elements written directly
+     under <extensions> (no wrapper element, unlike Garmin's TrackPointExtension). -->
+<gpx creator="activity_parser tests" version="1.1"
+    xmlns="http://www.topografix.com/GPX/1/1"
+    xmlns:gpxdata="http://www.cluetrust.com/XML/GPXDATA/1/0">
+  <trk>
+    <name>Gpxdata Track</name>
+    <trkseg>
+      <trkpt lat="37.0000" lon="-122.0000">
+        <ele>10.0</ele>
+        <time>2026-01-05T08:00:00Z</time>
+        <extensions>
+          <gpxdata:hr>100</gpxdata:hr>
+          <gpxdata:cadence>80</gpxdata:cadence>
+          <gpxdata:temp>19</gpxdata:temp>
+          <gpxdata:distance>0.0</gpxdata:distance>
+        </extensions>
+      </trkpt>
+      <trkpt lat="37.0001" lon="-122.0001">
+        <ele>11.0</ele>
+        <time>2026-01-05T08:00:01Z</time>
+        <extensions>
+          <gpxdata:hr>101</gpxdata:hr>
+          <gpxdata:cadence>81</gpxdata:cadence>
+          <gpxdata:temp>19</gpxdata:temp>
+          <gpxdata:distance>10.0</gpxdata:distance>
+        </extensions>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

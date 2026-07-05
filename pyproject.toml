@@ -46,6 +46,9 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
+[tool.pyright]
+extraPaths = ["scripts"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"
