@@ -8,6 +8,7 @@ import pytest
 
 from activity_parser import ActivityParser
 from activity_parser.parse_activity import (
+    coalesce_enhanced_columns,
     infer_extension,
     normalize_extension,
     select_and_rename_cols,
@@ -38,6 +39,31 @@ def test_select_and_rename_cols():
     out = select_and_rename_cols(df, ["a", "b", "missing"], {"a": "x"})
     assert list(out.columns) == ["x", "b"]
     assert out["x"].iloc[0] == 2
+
+
+def test_coalesce_enhanced_columns_prefers_enhanced_when_both_present():
+    df = pd.DataFrame({"altitude": [100.0, 200.0], "enhanced_altitude": [105.0, 210.0]})
+    out = coalesce_enhanced_columns(df, {"altitude": "enhanced_altitude"})
+    assert list(out["altitude"]) == [105.0, 210.0]
+
+
+def test_coalesce_enhanced_columns_falls_back_to_base_where_enhanced_is_null():
+    df = pd.DataFrame({"speed": [10.0, 20.0], "enhanced_speed": [15.0, None]})
+    out = coalesce_enhanced_columns(df, {"speed": "enhanced_speed"})
+    assert list(out["speed"]) == [15.0, 20.0]
+
+
+def test_coalesce_enhanced_columns_fills_missing_base_column():
+    df = pd.DataFrame({"enhanced_speed": [10.0, 20.0]})
+    out = coalesce_enhanced_columns(df, {"speed": "enhanced_speed"})
+    assert list(out["speed"]) == [10.0, 20.0]
+
+
+def test_coalesce_enhanced_columns_noop_without_enhanced_column():
+    df = pd.DataFrame({"altitude": [100.0, 200.0]})
+    out = coalesce_enhanced_columns(df, {"altitude": "enhanced_altitude"})
+    assert list(out["altitude"]) == [100.0, 200.0]
+    assert "enhanced_altitude" not in out.columns
 
 
 def test_parse_file_like_requires_ext():

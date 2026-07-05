@@ -21,6 +21,22 @@ def select_and_rename_cols(
     return df.loc[:, cols].rename(columns=mapper)
 
 
+def coalesce_enhanced_columns(df: pd.DataFrame, pairs: Mapping[str, str]) -> pd.DataFrame:
+    """Prefers each enhanced FIT column's values over its base counterpart.
+
+    Newer devices sometimes write only the enhanced field (e.g. ``enhanced_altitude``),
+    leaving the base field (``altitude``) absent entirely; both are already in the same
+    units, so no conversion is needed. ``pairs`` maps base column name to enhanced
+    column name.
+    """
+    df = df.copy()
+    for base, enhanced in pairs.items():
+        if enhanced not in df.columns:
+            continue
+        df[base] = df[enhanced].combine_first(df[base]) if base in df.columns else df[enhanced]
+    return df
+
+
 def normalize_extension(ext: str) -> str:
     """Normalize an extension string to one of: fit, tcx, gpx."""
     normalized = ext.lower().lstrip(".")
@@ -188,6 +204,17 @@ class ActivityParser:
         # Just use the FIT names for lap data as canonical
         self.fit_laps_mapper = {}
 
+        # Newer devices sometimes write only the higher-precision enhanced_* fields,
+        # omitting their base counterparts entirely; prefer enhanced where present.
+        self.fit_records_enhanced_pairs = {
+            "altitude": "enhanced_altitude",
+            "speed": "enhanced_speed",
+        }
+        self.fit_laps_enhanced_pairs = {
+            "avg_speed": "enhanced_avg_speed",
+            "max_speed": "enhanced_max_speed",
+        }
+
     def parse(
         self,
         file: str | PathLike[str] | IO[bytes],
@@ -219,12 +246,14 @@ class ActivityParser:
 
         if ext_normalized == "fit":
             records, laps, extra = parse_fit(file)
+            records = coalesce_enhanced_columns(records, self.fit_records_enhanced_pairs)
             records = select_and_rename_cols(
                 records,
                 self.fit_records_selector,
                 self.fit_records_mapper,
             )
             records.rename_axis("time", inplace=True)
+            laps = coalesce_enhanced_columns(laps, self.fit_laps_enhanced_pairs)
             laps = select_and_rename_cols(
                 laps,
                 self.fit_laps_selector,
