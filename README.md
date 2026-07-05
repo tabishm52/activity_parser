@@ -9,7 +9,7 @@ Parser for loading FIT, TCX and GPX activity files into Pandas DataFrames.
 
 Provides a parser object for reading (optionally gzipped) FIT, TCX, and GPX activity files and converting them into Pandas DataFrames.
 During import, column names extracted from activity files are normalized into a canonical set of output column names.
-See [TCX & GPX files](#tcx--gpx-files) below for supported schema versions/extensions.
+See [FIT files](#fit-files) and [TCX & GPX files](#tcx--gpx-files) below for format-specific details.
 
 ## Installation
 
@@ -33,6 +33,8 @@ records, laps, extra = parser.parse('path/to/fit_file.fit')
 records, laps, extra = parser.parse('path/to/gpx_file.gpx')
 records, laps, extra = parser.parse('path/to/tcx_file.tcx')
 ```
+
+Each file is assumed to contain a single activity: multiple activities/tracks (chained FIT files, multi-activity TCX, multi-track GPX) are merged into one set of results, possibly over-writing some fields.
 
 Regardless of source format, `records` and `laps` use a canonical set of column names (see [Output columns](#output-columns) below), e.g.:
 
@@ -70,6 +72,13 @@ Fields marked with (\*) are exporter-dependent.
 
 `laps` follows the same convention for shared metrics (`total_distance`, `avg_speed`, `max_speed`, `avg_heart_rate`, `avg_power`, `total_calories`, etc.).
 FIT also exposes FIT-specific fields not available from TCX/GPX (e.g. `fractional_cadence`, `left_right_balance`, `accumulated_power`) under their native FIT names.
+
+## FIT files
+
+FIT parsing wraps [`fitdecode`](https://github.com/polyvertex/fitdecode), which decodes against Garmin's public FIT SDK profile — field names, types, and units come from that profile, not this package.
+
+- Newer devices sometimes write only `enhanced_altitude`/`enhanced_speed` (and lap `enhanced_avg_speed`/`enhanced_max_speed`); `parse()` coalesces these into `altitude`/`speed` transparently.
+- Messages/fields fitdecode can't resolve against the profile (e.g. proprietary extensions) are dropped.
 
 ## TCX & GPX files
 
