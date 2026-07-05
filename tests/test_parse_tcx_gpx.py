@@ -32,6 +32,7 @@ VENDOR_TYPE_ATTRIBUTE_TCX = FILES / "vendor_type_attribute.tcx"
 DUPLICATE_CADENCE_TCX = FILES / "duplicate_cadence.tcx"
 LAPS_ONLY_TCX = FILES / "laps_only.tcx"
 EXTRA_VENDOR_TYPE_ATTRIBUTE_TCX = FILES / "extra_vendor_type_attribute.tcx"
+LX_NAMESPACE_RESET_TCX = FILES / "lx_namespace_reset.tcx"
 
 
 # ---------------------------------------------------------------------------
@@ -164,6 +165,21 @@ def test_tcx_laps_only_file_has_empty_records():
     assert records.empty
     assert isinstance(records.index, pd.DatetimeIndex)
     assert laps["total_distance"].tolist() == pytest.approx([5.0])
+
+
+def test_tcx_lx_namespace_reset_still_resolves():
+    # TrainerRoad resets AvgSpeed to no namespace inside a correctly-namespaced LX
+    # wrapper; it should still resolve via LX's own namespace.
+    _, laps, _ = ActivityParser().parse(LX_NAMESPACE_RESET_TCX)
+    assert laps["avg_speed"].tolist() == pytest.approx([28.8])
+    assert laps["max_cadence"].tolist() == [95]
+
+
+def test_tcx_lx_namespace_reset_does_not_overreach():
+    # A namespace-reset leaf whose name isn't a real LX field must stay unrecognized,
+    # not get matched to something else just because it shares LX's namespace.
+    _, low_laps, _ = parse_tcx(LX_NAMESPACE_RESET_TCX)
+    assert low_laps["NotARealField"].tolist() == ["99"]
 
 
 # ---------------------------------------------------------------------------

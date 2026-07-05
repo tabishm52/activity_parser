@@ -107,6 +107,17 @@ def _full_path_column_name(path: FieldPath) -> str:
     return "/".join(unknown_column_name(step) for step in path)
 
 
+def _field_with_parent_namespace(
+    path: FieldPath, fields: Mapping[FieldPath, XmlField]
+) -> XmlField | None:
+    """Retries a leaf with no namespace under its parent's namespace instead."""
+    parent = path[:-1]
+    if not parent or path[-1][0] is not None:
+        return None
+    parent_namespace = parent[-1][0]
+    return fields.get(parent + ((parent_namespace, path[-1][1]),))
+
+
 def _row_from_fields(
     element: etree._Element, fields: Mapping[FieldPath, XmlField]
 ) -> dict[str, str]:
@@ -117,7 +128,7 @@ def _row_from_fields(
     """
     row: dict[str, str] = {}
     for path, value in _walk(element, ()):
-        field = fields.get(path)
+        field = fields.get(path) or _field_with_parent_namespace(path, fields)
         column = field.column if field is not None else unknown_column_name(path[-1])
         if column in row:
             column = _full_path_column_name(path)
