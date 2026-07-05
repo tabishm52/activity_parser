@@ -11,7 +11,7 @@ import pytest
 from activity_parser import ActivityParser
 from activity_parser.parse_fit_file import parse_fit
 
-FILES = Path(__file__).parent / "files"
+FILES = Path(__file__).parent / "files" / "fit"
 EDGE_820 = FILES / "garmin-edge-820-bike.fit"
 FENIX_5 = FILES / "garmin-fenix-5-bike.fit"
 
