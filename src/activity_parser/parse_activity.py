@@ -63,13 +63,16 @@ class ActivityParser:
     interchangeable use of DataFrames from the different activity file types.
     """
 
-    def __init__(self, strict_xml: bool = False) -> None:
+    def __init__(self, *, check_crc: bool = False, strict_xml: bool = False) -> None:
         """Initialize parser settings, selectors, and mappers.
 
         Args:
-            strict_xml: If True, TCX/GPX XML parsing fails on malformed input.
-                If False, parser recovery is enabled.
+            check_crc: If True, raise ``fitdecode.FitCRCError`` on a CRC mismatch in
+                FIT files. If False, CRC verification is skipped.
+            strict_xml: If True, raise ``lxml.etree.XMLSyntaxError`` on malformed
+                TCX/GPX XML. If False, parser recovery is enabled.
         """
+        self.check_crc = check_crc
         self.strict_xml = strict_xml
 
         # 'Selectors' specify the list and order of columns to be copied from each
@@ -245,7 +248,7 @@ class ActivityParser:
             raise ValueError("ext must be provided when file is a file-like object.")
 
         if ext_normalized == "fit":
-            records, laps, extra = parse_fit(file)
+            records, laps, extra = parse_fit(file, check_crc=self.check_crc)
             records = coalesce_enhanced_columns(records, self.fit_records_enhanced_pairs)
             records = select_and_rename_cols(
                 records,

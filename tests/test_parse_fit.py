@@ -105,6 +105,21 @@ def test_gz_round_trip(tmp_path):
     pd.testing.assert_frame_equal(plain, unzipped)
 
 
+def test_crc_mismatch_recovery(tmp_path):
+    # Flip the last byte of the file's CRC footer: check_crc=True raises, the
+    # default (False) skips verification and parses the file anyway.
+    corrupt = tmp_path / "corrupt_crc.fit"
+    data = bytearray(EDGE_820.read_bytes())
+    data[-1] ^= 0xFF
+    corrupt.write_bytes(data)
+
+    with pytest.raises(fitdecode.FitCRCError):
+        ActivityParser(check_crc=True).parse(corrupt)
+
+    records, _, _ = ActivityParser().parse(corrupt)
+    assert len(records) == 15
+
+
 def test_file_like_input():
     with open(EDGE_820, "rb") as f:
         records, _, _ = ActivityParser().parse(f, ext="fit")
