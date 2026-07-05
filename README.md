@@ -75,7 +75,8 @@ Any exporter emitting one of the recognized extension schemas (see `activity_par
 `laps` follows the same convention for shared metrics (`total_distance`, `avg_speed`, `max_speed`, `avg_heart_rate`, `avg_power`, `total_calories`, etc.).
 FIT also exposes FIT-specific fields not available from TCX/GPX (e.g. `fractional_cadence`, `left_right_balance`, `accumulated_power`) under their native FIT names.
 
-TCX/GPX records and laps also expose the rest of their base schemas and known extensions beyond this core set — e.g. GPS-quality fields (`hdop`, `vdop`, `pdop`, `satellites`, `fix_type`), `course`/`bearing`, `water_temperature`, `depth`, `sensor_state`, and lap fields like `intensity`, `notes`, `total_strides`.
+TCX/GPX records and laps also expose other fields beyond this core set — e.g. `course`/`bearing`, `water_temperature`, `depth`, `sensor_state`, and lap fields like `intensity`, `notes`, `total_strides`.
+GPS-fix-quality diagnostics (`hdop`, `vdop`, `pdop`, `satellites`, `fix_type`, ...) and static descriptive labels (`name`, `cmt`, `desc`, ...) are schema-known but aren't fitness data, so they're left out of the canonical selector; use the lower-level `parse_tcx`/`parse_gpx` if you need them.
 See `activity_parser.xml_fields` for the full field tables, or `parser.tcx_records_selector` / `parser.gpx_records_selector` / `parser.tcx_laps_selector` for the exact canonical column set and order each format can produce.
 
 ## Unrecognized elements

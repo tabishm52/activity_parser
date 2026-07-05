@@ -92,6 +92,9 @@ class ActivityParser:
             "sensor_state",
         ]
 
+        # GPX's base schema also has GPS-fix-quality diagnostics (satellites, hdop, ...)
+        # and static descriptive labels (name, cmt, ...); those are still available via
+        # the low-level parse_gpx, but aren't fitness data, so are left out here.
         self.gpx_records_selector = [
             "latitude",
             "longitude",
@@ -106,24 +109,7 @@ class ActivityParser:
             "depth",
             "course",
             "bearing",
-            "satellites",
-            "hdop",
-            "vdop",
-            "pdop",
-            "fix_type",
             "sensor",
-            "magnetic_variation",
-            "geoid_height",
-            "age_of_dgps_data",
-            "dgps_station_id",
-            "name",
-            "cmt",
-            "desc",
-            "src",
-            "sym",
-            "type",
-            "url",
-            "urlname",
         ]
 
         self.fit_records_mapper = {

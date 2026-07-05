@@ -234,14 +234,16 @@ def test_gpx_unknown_extension_kept_as_namespaced_string():
 
 
 def test_gpx_1_0_base_fields():
-    # GPX 1.0 exposes course/speed directly (no <extensions> wrapper) plus GPS-quality
-    # fields absent from the modern GPX 1.1 + gpxtpx combination tested elsewhere.
+    # GPX 1.0 exposes course/speed directly (no <extensions> wrapper). GPS-fix-quality
+    # diagnostics (hdop, satellites, fix_type, ...) are schema-known but aren't fitness
+    # data, so they're left out of the canonical selector.
     records, _, _ = ActivityParser().parse(GPX10)
     assert records["course"].tolist() == pytest.approx([90.0, 91.0])
     assert records["speed"].tolist() == pytest.approx([18.0, 18.72])
-    assert records["fix_type"].tolist() == ["3d", "3d"]
-    assert records["satellites"].tolist() == [8, 9]
-    assert records["hdop"].tolist() == pytest.approx([1.2, 1.1])
+    assert "fix_type" not in records.columns
+
+    normalized, _, _ = ActivityParser().parse(GPX10)
+    assert "fix_type" not in normalized.columns
 
 
 # ---------------------------------------------------------------------------
