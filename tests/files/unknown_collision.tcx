@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Two unrelated, unrecognized vendor elements that happen to share a leaf name
+     ("value") at different positions in the tree. Both must be preserved: the second
+     gets a column named from its full path rather than overwriting the first. -->
+<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2">
+  <Activities>
+    <Activity Sport="Biking">
+      <Id>2026-01-05T08:00:00Z</Id>
+      <Lap StartTime="2026-01-05T08:00:00Z">
+        <TotalTimeSeconds>1.0</TotalTimeSeconds>
+        <DistanceMeters>5.0</DistanceMeters>
+        <Track>
+          <Trackpoint>
+            <Time>2026-01-05T08:00:00Z</Time>
+            <VendorA>
+              <value>111</value>
+            </VendorA>
+            <VendorB>
+              <value>222</value>
+            </VendorB>
+          </Trackpoint>
+        </Track>
+      </Lap>
+    </Activity>
+  </Activities>
+</TrainingCenterDatabase>

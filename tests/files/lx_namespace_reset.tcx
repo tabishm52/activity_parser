@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- TrainerRoad's TCX export resets AvgSpeed to no namespace even though its LX parent
+     is correctly namespaced; it should still resolve to avg_speed via LX's namespace. -->
+<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2"
+    xmlns:ns3="http://www.garmin.com/xmlschemas/ActivityExtension/v2">
+  <Activities>
+    <Activity Sport="Biking">
+      <Id>2026-01-05T08:00:00Z</Id>
+      <Lap StartTime="2026-01-05T08:00:00Z">
+        <TotalTimeSeconds>1.0</TotalTimeSeconds>
+        <DistanceMeters>5.0</DistanceMeters>
+        <Extensions>
+          <ns3:LX>
+            <AvgSpeed xmlns:ns3="http://www.garmin.com/xmlschemas/ActivityExtension/v2" xmlns="">8.0</AvgSpeed>
+          </ns3:LX>
+          <ns3:LX>
+            <ns3:MaxBikeCadence>95</ns3:MaxBikeCadence>
+          </ns3:LX>
+          <ns3:LX>
+            <NotARealField xmlns="">99</NotARealField>
+          </ns3:LX>
+        </Extensions>
+      </Lap>
+    </Activity>
+  </Activities>
+</TrainingCenterDatabase>

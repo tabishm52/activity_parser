@@ -75,26 +75,41 @@ class ActivityParser:
             "temperature",
         ]
 
+        # TCX/GPX records and laps are already canonically named by parse_tcx_gpx (see
+        # xml_fields); these selectors just pick a stable column order and drop any
+        # namespace-qualified columns for unrecognized elements.
+
         self.tcx_records_selector = [
-            "LatitudeDegrees",
-            "LongitudeDegrees",
-            "AltitudeMeters",
-            "DistanceKm",
-            "Speed",
-            "Cadence",
-            "HeartRateBpm",
-            "Watts",
+            "latitude",
+            "longitude",
+            "altitude",
+            "distance",
+            "speed",
+            "cadence",
+            "cadence_sensor",
+            "heart_rate",
+            "power",
+            "sensor_state",
         ]
 
+        # GPX's base schema also has GPS-fix-quality diagnostics (satellites, hdop, ...)
+        # and static descriptive labels (name, cmt, ...); those are still available via
+        # the low-level parse_gpx, but aren't fitness data, so are left out here.
         self.gpx_records_selector = [
-            "lat",
-            "lon",
-            "ele",
+            "latitude",
+            "longitude",
+            "altitude",
+            "distance",
             "speed",
-            "cad",
-            "hr",
+            "cadence",
+            "heart_rate",
             "power",
-            "atemp",
+            "temperature",
+            "water_temperature",
+            "depth",
+            "course",
+            "bearing",
+            "sensor",
         ]
 
         self.fit_records_mapper = {
@@ -110,28 +125,6 @@ class ActivityParser:
             "left_right_balance": "left_right_balance",
             "accumulated_power": "accumulated_power",
             "temperature": "temperature",
-        }
-
-        self.tcx_records_mapper = {
-            "LatitudeDegrees": "latitude",
-            "LongitudeDegrees": "longitude",
-            "AltitudeMeters": "altitude",
-            "DistanceKm": "distance",
-            "Speed": "speed",
-            "Cadence": "cadence",
-            "HeartRateBpm": "heart_rate",
-            "Watts": "power",
-        }
-
-        self.gpx_records_mapper = {
-            "lat": "latitude",
-            "lon": "longitude",
-            "ele": "altitude",
-            "speed": "speed",
-            "cad": "cadence",
-            "hr": "heart_rate",
-            "power": "power",
-            "atemp": "temperature",
         }
 
         self.fit_laps_selector = [
@@ -174,39 +167,26 @@ class ActivityParser:
         ]
 
         self.tcx_laps_selector = [
-            "TriggerMethod",
-            "StartTime",
-            "TotalTimeSeconds",
-            "DistanceKm",
-            "AvgSpeed",
-            "MaximumSpeed",
-            "Cadence",
-            "MaxBikeCadence",
-            "AverageHeartRateBpm",
-            "MaximumHeartRateBpm",
-            "AvgWatts",
-            "MaxWatts",
-            "Calories",
+            "lap_trigger",
+            "start_time",
+            "total_elapsed_time",
+            "total_distance",
+            "avg_speed",
+            "max_speed",
+            "avg_cadence",
+            "max_cadence",
+            "total_strides",
+            "avg_heart_rate",
+            "max_heart_rate",
+            "avg_power",
+            "max_power",
+            "total_calories",
+            "intensity",
+            "notes",
         ]
 
         # Just use the FIT names for lap data as canonical
         self.fit_laps_mapper = {}
-
-        self.tcx_laps_mapper = {
-            "TriggerMethod": "lap_trigger",
-            "StartTime": "start_time",
-            "TotalTimeSeconds": "total_elapsed_time",
-            "DistanceKm": "total_distance",
-            "AvgSpeed": "avg_speed",
-            "MaximumSpeed": "max_speed",
-            "Cadence": "avg_cadence",
-            "MaxBikeCadence": "max_cadence",
-            "AverageHeartRateBpm": "avg_heart_rate",
-            "MaximumHeartRateBpm": "max_heart_rate",
-            "AvgWatts": "avg_power",
-            "MaxWatts": "max_power",
-            "Calories": "total_calories",
-        }
 
     def parse(
         self,
@@ -252,26 +232,17 @@ class ActivityParser:
             )
 
         elif ext_normalized == "tcx":
+            # parse_tcx already emits canonically-named columns; these selectors just
+            # pick a stable order and drop unrecognized-element columns.
             records, laps, extra = parse_tcx(file, strict_xml=self.strict_xml)
-            records = select_and_rename_cols(
-                records,
-                self.tcx_records_selector,
-                self.tcx_records_mapper,
-            )
+            records = select_and_rename_cols(records, self.tcx_records_selector, {})
             records.rename_axis("time", inplace=True)
-            laps = select_and_rename_cols(
-                laps,
-                self.tcx_laps_selector,
-                self.tcx_laps_mapper,
-            )
+            laps = select_and_rename_cols(laps, self.tcx_laps_selector, {})
 
         elif ext_normalized == "gpx":
+            # parse_gpx already emits canonically-named columns; see tcx branch above.
             records, laps, extra = parse_gpx(file, strict_xml=self.strict_xml)
-            records = select_and_rename_cols(
-                records,
-                self.gpx_records_selector,
-                self.gpx_records_mapper,
-            )
+            records = select_and_rename_cols(records, self.gpx_records_selector, {})
             records.rename_axis("time", inplace=True)
             # Note GPX files have no lap information
 

@@ -9,6 +9,7 @@ Parser for loading FIT, TCX and GPX activity files into Pandas DataFrames.
 
 Provides a parser object for reading (optionally gzipped) FIT, TCX, and GPX activity files and converting them into Pandas DataFrames.
 During import, column names extracted from activity files are normalized into a canonical set of output column names.
+See [TCX & GPX files](#tcx--gpx-files) below for supported schema versions/extensions.
 
 ## Installation
 
@@ -55,7 +56,7 @@ Units are aligned to FIT's standard units (via `fitdecode.StandardUnitsDataProce
 |---|---|:-:|:-:|:-:|
 | `latitude`, `longitude` | degrees | Yes | Yes | Yes |
 | `altitude` | meters | Yes | Yes | Yes |
-| `distance` | km | Yes | Yes | — |
+| `distance` | km | Yes | Yes | (\*) |
 | `speed` | km/h | Yes | Yes | (\*) |
 | `cadence` | rpm | Yes | Yes | Yes |
 | `heart_rate` | bpm | Yes | Yes | Yes |
@@ -63,11 +64,20 @@ Units are aligned to FIT's standard units (via `fitdecode.StandardUnitsDataProce
 | `temperature` | °C | Yes | — | Yes |
 
 Not every column appears in every file: `parse()` only includes columns actually present in the source.
-Two of these gaps are structural (GPX has no field for cumulative distance, in the base spec or in Garmin's `TrackPointExtension`, and TCX has no field for temperature, in the base spec or in Garmin's `ActivityExtension`), so those will never appear regardless of exporter.
+TCX has no temperature field in any known schema, so it never appears from TCX.
 GPX files also have no lap data, so `laps` will always be an empty DataFrame.
-
-(\*) `speed` for GPX is exporter-dependent, not a format limitation: it's defined in Garmin's `TrackPointExtension/v2` schema.
-Any exporter that emits `v2` (or another extension exposing a `speed`-named field) will have it picked up and normalized.
+Fields marked with (\*) are exporter-dependent.
 
 `laps` follows the same convention for shared metrics (`total_distance`, `avg_speed`, `max_speed`, `avg_heart_rate`, `avg_power`, `total_calories`, etc.).
 FIT also exposes FIT-specific fields not available from TCX/GPX (e.g. `fractional_cadence`, `left_right_balance`, `accumulated_power`) under their native FIT names.
+
+## TCX & GPX files
+
+The parser supports the following schema versions and extensions:
+
+| Format | Schema version | Extensions |
+|---|---|---|
+| TCX | v2 | Garmin `ActivityExtension` v2 |
+| GPX | 1.0 / 1.1 | Garmin `TrackPointExtension` v1/v2, Cluetrust `gpxdata` |
+
+Unrecognized elements and attributes are exported as string columns named with their XML namespace in Clark notation.

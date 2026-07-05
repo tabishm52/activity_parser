@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Both base Cadence and TPX RunCadence present: base Cadence must win since it
+     appears first in the document (and in the schema's element sequence). -->
+<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2"
+    xmlns:ns3="http://www.garmin.com/xmlschemas/ActivityExtension/v2">
+  <Activities>
+    <Activity Sport="Running">
+      <Id>2026-01-05T08:00:00Z</Id>
+      <Lap StartTime="2026-01-05T08:00:00Z">
+        <TotalTimeSeconds>1.0</TotalTimeSeconds>
+        <DistanceMeters>5.0</DistanceMeters>
+        <Calories>2</Calories>
+        <Intensity>Active</Intensity>
+        <TriggerMethod>Manual</TriggerMethod>
+        <Track>
+          <Trackpoint>
+            <Time>2026-01-05T08:00:00Z</Time>
+            <Position>
+              <LatitudeDegrees>37.0000</LatitudeDegrees>
+              <LongitudeDegrees>-122.0000</LongitudeDegrees>
+            </Position>
+            <Cadence>80</Cadence>
+            <Extensions>
+              <ns3:TPX>
+                <ns3:RunCadence>170</ns3:RunCadence>
+              </ns3:TPX>
+            </Extensions>
+          </Trackpoint>
+        </Track>
+      </Lap>
+    </Activity>
+  </Activities>
+</TrainingCenterDatabase>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- GPX 1.0: unlike 1.1, the base schema has direct course/speed elements and no
+     <extensions> wrapper (custom data is disallowed in the base wptType). Also
+     exercises GPS-quality fields (fix/sat/hdop). -->
+<gpx creator="activity_parser tests" version="1.0"
+    xmlns="http://www.topografix.com/GPX/1/0">
+  <trk>
+    <name>GPX 1.0 Track</name>
+    <trkseg>
+      <trkpt lat="37.0000" lon="-122.0000">
+        <ele>10.0</ele>
+        <time>2026-01-05T08:00:00Z</time>
+        <course>90.0</course>
+        <speed>5.0</speed>
+        <fix>3d</fix>
+        <sat>8</sat>
+        <hdop>1.2</hdop>
+      </trkpt>
+      <trkpt lat="37.0001" lon="-122.0001">
+        <ele>11.0</ele>
+        <time>2026-01-05T08:00:01Z</time>
+        <course>91.0</course>
+        <speed>5.2</speed>
+        <fix>3d</fix>
+        <sat>9</sat>
+        <hdop>1.1</hdop>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>
