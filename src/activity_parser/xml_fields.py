@@ -2,18 +2,9 @@
 
 Each table maps a path of ``(namespace, localname)`` steps from a record/lap element
 down to a leaf attribute or element (see ``parse_tcx_gpx.walk_fields``) to a canonical
-output column and a conversion. Leaf elements not present in a table still appear in
-the output, namespace-qualified, as uncoerced strings (see
-``parse_tcx_gpx.unknown_column_name``).
+output column and a conversion.
 
-Canonical column names reuse FIT's vocabulary where an equivalent FIT field exists, so
-the same name means the same unit regardless of source format.
-
-When two entries share a canonical column (e.g. base ``Cadence`` and TPX
-``RunCadence``), the value from whichever element occurs first in the document wins;
-there's no explicit priority beyond document order.
-
-Schemas transcribed from (retrieved 2026-07-04):
+Schemas transcribed from:
 - TCX v2 / ActivityExtension v2: https://www8.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd
   and .../ActivityExtensionv2.xsd
 - GPX 1.0 / 1.1: https://www.topografix.com/GPX/1/0/gpx.xsd and .../1/1/gpx.xsd

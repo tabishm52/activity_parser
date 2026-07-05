@@ -1,10 +1,9 @@
 """Functions for parsing TCX and GPX files into Pandas DataFrames.
 
-Records and laps are extracted using the schema-derived field tables in
-``xml_fields``: known elements/attributes are converted to typed, canonically-named
-columns; anything else is still collected, namespace-qualified, as an uncoerced string
-column (see ``unknown_column_name``) so unrecognized extensions aren't silently
-dropped.
+Records and laps are extracted using the schema-derived tables in ``xml_fields``. Known
+elements/attributes are converted to typed, canonically-named columns. Anything else is
+still collected, namespace-qualified, as an uncoerced string column so unrecognized
+extensions aren't silently dropped.
 """
 
 from collections.abc import Iterable, Iterator, Mapping
@@ -39,8 +38,8 @@ def extract_xml_fields(
 ) -> Iterator[tuple[str, str | None]]:
     """Yields (name, value) pairs recursively through an XML element.
 
-    Used for the ``extra`` metadata dict, which is intentionally left as a raw,
-    non-canonical slurp of whatever remains once records/laps are removed.
+    Used only for the ``extra`` metadata dict, which pulls whatever data remains once
+    records/laps are removed.
     """
     # Iterating with "*" matches only true elements and drops e.g. comments
     for el in element.iter("*"):
@@ -132,7 +131,6 @@ def build_dataframe(
     """Builds a DataFrame from ``elements`` using ``fields`` for typing/renaming."""
     df = pd.DataFrame(_row_from_fields(element, fields) for element in elements)
 
-    # First path to a given column wins; see xml_fields' module docstring for why.
     converts: dict[str, Converter | None] = {}
     for field in fields.values():
         converts.setdefault(field.column, field.convert)
@@ -171,11 +169,9 @@ def parse_tcx(
     Returns:
         Tuple containing records, laps, and additional metadata.
     """
-    # lxml takes care of identifying and handling a gzipped file
     parser = etree.XMLParser(recover=not strict_xml)
     root = etree.parse(file, parser).getroot()
 
-    # TCX files occasionally have duplicate timestamps, just drop those
     records = build_dataframe(root.iter("{*}Trackpoint"), TCX_TRACKPOINT_FIELDS)
     records = _index_by_time(records)
 
