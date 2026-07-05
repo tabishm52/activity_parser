@@ -28,6 +28,23 @@ def test_parse_fit_records_index(path):
     assert "file_id" in extra
 
 
+def test_parse_fit_keeps_unknown_record_fields():
+    records, _, _ = parse_fit(EDGE_820)
+    assert "unknown_61" in records.columns
+    assert "unknown_66" in records.columns
+
+
+def test_parse_fit_keeps_unknown_messages_in_extra():
+    _, _, extra = parse_fit(EDGE_820)
+    assert "unknown_22" in extra
+
+
+def test_activity_parser_drops_unknown_fields_from_canonical_output():
+    records, laps, _ = ActivityParser().parse(EDGE_820)
+    assert not any(col.startswith("unknown_") for col in records.columns)
+    assert not any(col.startswith("unknown_") for col in laps.columns)
+
+
 @pytest.mark.parametrize("path", [EDGE_820, FENIX_5], ids=lambda p: p.stem)
 def test_parse_fit_numeric_dtypes(path):
     records, _, _ = parse_fit(path)

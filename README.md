@@ -78,7 +78,7 @@ FIT also exposes FIT-specific fields not available from TCX/GPX (e.g. `fractiona
 FIT parsing wraps [`fitdecode`](https://github.com/polyvertex/fitdecode), which decodes against Garmin's public FIT SDK profile — field names, types, and units come from that profile, not this package.
 
 - Newer devices sometimes write only `enhanced_altitude`/`enhanced_speed` (and lap `enhanced_avg_speed`/`enhanced_max_speed`); `parse()` coalesces these into `altitude`/`speed` transparently.
-- Messages/fields fitdecode can't resolve against the profile (e.g. proprietary extensions) are dropped.
+- Messages/fields fitdecode can't resolve against the profile (e.g. proprietary extensions) are kept as raw values under `unknown_<n>` names; `parse()`'s canonical columns still exclude them.
 
 ## TCX & GPX files
 
