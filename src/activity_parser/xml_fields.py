@@ -86,14 +86,6 @@ class XmlField:
     convert: Converter | None = None
 
 
-def column_converts(fields: Mapping[FieldPath, XmlField]) -> dict[str, Converter | None]:
-    """Maps each canonical column produced by ``fields`` to its conversion."""
-    converts: dict[str, Converter | None] = {}
-    for field in fields.values():
-        converts.setdefault(field.column, field.convert)
-    return converts
-
-
 def _prefixed(
     prefix: FieldPath, ns: str, fields: Mapping[tuple[str, ...], XmlField]
 ) -> dict[FieldPath, XmlField]:

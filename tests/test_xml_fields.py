@@ -19,7 +19,6 @@ from activity_parser.xml_fields import (
     TPX1_NS,
     TPX2_NS,
     XmlField,
-    column_converts,
 )
 
 ALL_TABLES = {
@@ -49,7 +48,7 @@ def test_every_namespace_is_used(namespace):
 
 @pytest.mark.parametrize("table_name", ALL_TABLES)
 def test_no_conflicting_converts_within_table(table_name):
-    # column_converts collapses same-column entries first-wins, and collisions between
+    # build_dataframe collapses same-column entries first-wins, and collisions between
     # source fields resolve by document order — both are only safe if every entry
     # mapping to a given column agrees on the conversion.
     converts = {}
@@ -77,9 +76,3 @@ def test_gpx10_has_no_extensions_wrapper_fields():
     # GPX 1.0's wptType has no <extensions> element; course/speed are direct children.
     assert ((GPX10_NS, "course"),) in GPX_TRACKPOINT_FIELDS
     assert ((GPX10_NS, "extensions"), (GPX10_NS, "power")) not in GPX_TRACKPOINT_FIELDS
-
-
-def test_column_converts_maps_synonyms_consistently():
-    converts = column_converts(TCX_TRACKPOINT_FIELDS)
-    assert converts["cadence"] is NUMERIC
-    assert converts["distance"] is NUMERIC_M_TO_KM

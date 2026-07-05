@@ -18,10 +18,10 @@ from .xml_fields import (
     GPX_TRACKPOINT_FIELDS,
     TCX_LAP_FIELDS,
     TCX_TRACKPOINT_FIELDS,
+    Converter,
     FieldPath,
     FieldPathStep,
     XmlField,
-    column_converts,
 )
 
 
@@ -120,7 +120,11 @@ def build_dataframe(
 ) -> pd.DataFrame:
     """Builds a DataFrame from ``elements`` using ``fields`` for typing/renaming."""
     df = pd.DataFrame(_row_from_fields(element, fields) for element in elements)
-    converts = column_converts(fields)
+
+    # First path to a given column wins; see xml_fields' module docstring for why.
+    converts: dict[str, Converter | None] = {}
+    for field in fields.values():
+        converts.setdefault(field.column, field.convert)
 
     for col in df.columns:
         convert = converts.get(col)
