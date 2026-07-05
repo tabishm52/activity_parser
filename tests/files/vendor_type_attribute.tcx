@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A vendor attribute literally named "type" but not in the xsi:type namespace: only
+     genuine xsi:type is schema metadata to skip, this one is real vendor data. -->
+<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2"
+    xmlns:ns3="urn:example:vendor"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Activities>
+    <Activity Sport="Biking">
+      <Id>2026-01-05T08:00:00Z</Id>
+      <Lap StartTime="2026-01-05T08:00:00Z">
+        <TotalTimeSeconds>1.0</TotalTimeSeconds>
+        <DistanceMeters>5.0</DistanceMeters>
+        <Track>
+          <Trackpoint>
+            <Time>2026-01-05T08:00:00Z</Time>
+            <Extra ns3:type="vendor-real-data" xsi:type="SomeSchemaType">hi</Extra>
+          </Trackpoint>
+        </Track>
+      </Lap>
+    </Activity>
+  </Activities>
+</TrainingCenterDatabase>

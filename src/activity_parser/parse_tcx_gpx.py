@@ -18,6 +18,7 @@ from .xml_fields import (
     GPX_TRACKPOINT_FIELDS,
     TCX_LAP_FIELDS,
     TCX_TRACKPOINT_FIELDS,
+    XSI_NS,
     Converter,
     FieldPath,
     FieldPathStep,
@@ -80,7 +81,7 @@ def _walk(element: etree._Element, path: FieldPath) -> Iterator[tuple[FieldPath,
     """Recursive implementation of ``walk_fields``; ``path`` is the walk so far."""
     for key, value in element.attrib.items():
         qname = etree.QName(key)
-        if qname.localname == "type":
+        if qname.namespace == XSI_NS and qname.localname == "type":
             # xsi:type is schema-validation metadata, not activity data.
             continue
         yield path + ((qname.namespace, "@" + qname.localname),), cast(str, value)
@@ -88,12 +89,10 @@ def _walk(element: etree._Element, path: FieldPath) -> Iterator[tuple[FieldPath,
     # "*" matches only true elements, so comments are skipped without special-casing.
     children = list(element.iterchildren("*"))
     if element.text is not None and not element.text.isspace():
-        # Assumes elements are either a leaf-with-text or a container, never both.
         yield path, element.text
-    elif children:
-        for child in children:
-            child_qname = etree.QName(child)
-            yield from _walk(child, path + ((child_qname.namespace, child_qname.localname),))
+    for child in children:
+        child_qname = etree.QName(child)
+        yield from _walk(child, path + ((child_qname.namespace, child_qname.localname),))
 
 
 def unknown_column_name(step: FieldPathStep) -> str:
@@ -103,15 +102,26 @@ def unknown_column_name(step: FieldPathStep) -> str:
     return f"{{{namespace}}}{name}" if namespace else name
 
 
+def _full_path_column_name(path: FieldPath) -> str:
+    """Column name for a field whose usual name collides with an earlier one in the row."""
+    return "/".join(unknown_column_name(step) for step in path)
+
+
 def _row_from_fields(
     element: etree._Element, fields: Mapping[FieldPath, XmlField]
 ) -> dict[str, str]:
-    """Maps ``element``'s fields to a row dict, keyed by canonical or unknown column."""
+    """Maps ``element``'s fields to a row dict, keyed by canonical or unknown column.
+
+    The first path to reach a given column claims its usual name; a later, different
+    path that collides with it is kept too, under its full path, rather than dropped.
+    """
     row: dict[str, str] = {}
     for path, value in _walk(element, ()):
         field = fields.get(path)
         column = field.column if field is not None else unknown_column_name(path[-1])
-        row.setdefault(column, value)
+        if column in row:
+            column = _full_path_column_name(path)
+        row[column] = value
     return row
 
 

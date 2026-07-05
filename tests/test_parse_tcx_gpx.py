@@ -26,6 +26,11 @@ UNKNOWN_EXTENSION_GPX = FILES / "unknown_extension.gpx"
 GPX10 = FILES / "gpx10.gpx"
 RUNNING_TCX = FILES / "running.tcx"
 CADENCE_COLLISION_TCX = FILES / "cadence_collision.tcx"
+UNKNOWN_COLLISION_TCX = FILES / "unknown_collision.tcx"
+MIXED_CONTENT_TCX = FILES / "mixed_content.tcx"
+VENDOR_TYPE_ATTRIBUTE_TCX = FILES / "vendor_type_attribute.tcx"
+DUPLICATE_CADENCE_TCX = FILES / "duplicate_cadence.tcx"
+LAPS_ONLY_TCX = FILES / "laps_only.tcx"
 
 
 # ---------------------------------------------------------------------------
@@ -133,6 +138,24 @@ def test_tcx_base_cadence_beats_run_cadence():
     # Both base Cadence and TPX RunCadence present: base wins (first walked).
     records, _, _ = ActivityParser().parse(CADENCE_COLLISION_TCX)
     assert records["cadence"].tolist() == [80]
+
+
+def test_tcx_duplicate_element_keeps_both_values():
+    # Two literal <Cadence> elements in one Trackpoint: the first claims "cadence", the
+    # second is kept under its full-path column rather than being dropped.
+    records, _, _ = ActivityParser().parse(DUPLICATE_CADENCE_TCX)
+    assert records["cadence"].tolist() == [80]
+    low_records, _, _ = parse_tcx(DUPLICATE_CADENCE_TCX)
+    ns = "http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2"
+    assert low_records[f"{{{ns}}}Cadence"].tolist() == ["81"]
+
+
+def test_tcx_laps_only_file_has_empty_records():
+    # A manually-logged workout: lap summary data but no trackpoints at all.
+    records, laps, _ = ActivityParser().parse(LAPS_ONLY_TCX)
+    assert records.empty
+    assert isinstance(records.index, pd.DatetimeIndex)
+    assert laps["total_distance"].tolist() == pytest.approx([5.0])
 
 
 # ---------------------------------------------------------------------------
@@ -285,3 +308,28 @@ def test_parse_tcx_low_level_matches_high_level_known_columns():
     high_records, _, _ = ActivityParser().parse(SAMPLE_TCX)
     for col in high_records.columns:
         assert low_records[col].tolist() == high_records[col].tolist()
+
+
+def test_tcx_unrelated_unknowns_with_same_leaf_name_both_kept():
+    # VendorA/value and VendorB/value would collide on the same unknown column if only
+    # the leaf name were used; the second must survive under its full path instead.
+    records, _, _ = parse_tcx(UNKNOWN_COLLISION_TCX)
+    ns = "http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2"
+    assert records[f"{{{ns}}}value"].tolist() == ["111"]
+    assert records[f"{{{ns}}}VendorB/{{{ns}}}value"].tolist() == ["222"]
+
+
+def test_tcx_mixed_content_keeps_both_text_and_child():
+    # An element with both leaf text and a child element used to only keep the text.
+    records, _, _ = parse_tcx(MIXED_CONTENT_TCX)
+    ns = "http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2"
+    assert records[f"{{{ns}}}Weird"].tolist() == ["leaf-text-here"]
+    assert records[f"{{{ns}}}Nested"].tolist() == ["should-not-be-lost"]
+
+
+def test_tcx_type_attribute_only_skipped_for_xsi_namespace():
+    # Only genuine xsi:type is schema-validation metadata; a same-named attribute in
+    # another namespace is real data and must be kept.
+    records, _, _ = parse_tcx(VENDOR_TYPE_ATTRIBUTE_TCX)
+    assert records["{urn:example:vendor}type"].tolist() == ["vendor-real-data"]
+    assert "SomeSchemaType" not in records.iloc[0].tolist()

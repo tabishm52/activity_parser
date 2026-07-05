@@ -27,6 +27,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+XSI_NS = "http://www.w3.org/2001/XMLSchema-instance"
 TCX_NS = "http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2"
 AEXT_NS = "http://www.garmin.com/xmlschemas/ActivityExtension/v2"
 GPX10_NS = "http://www.topografix.com/GPX/1/0"

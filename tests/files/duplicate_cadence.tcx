@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Two literal <Cadence> elements in one Trackpoint (malformed, but exporters do this):
+     the first claims the canonical "cadence" column, the second is kept under its own
+     full-path column rather than dropped. -->
+<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2">
+  <Activities>
+    <Activity Sport="Biking">
+      <Id>2026-01-05T08:00:00Z</Id>
+      <Lap StartTime="2026-01-05T08:00:00Z">
+        <TotalTimeSeconds>1.0</TotalTimeSeconds>
+        <DistanceMeters>5.0</DistanceMeters>
+        <Track>
+          <Trackpoint>
+            <Time>2026-01-05T08:00:00Z</Time>
+            <Cadence>80</Cadence>
+            <Cadence>81</Cadence>
+          </Trackpoint>
+        </Track>
+      </Lap>
+    </Activity>
+  </Activities>
+</TrainingCenterDatabase>

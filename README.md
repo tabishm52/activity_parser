@@ -83,6 +83,7 @@ See `activity_parser.xml_fields` for the full field tables, or `parser.tcx_recor
 
 TCX/GPX elements and attributes that aren't in the known schema tables aren't dropped: `parse_tcx`/`parse_gpx` still collect them as string columns, named with their XML namespace in Clark notation (e.g. `{http://example.com/some-vendor-extension}stress`), with no numeric coercion applied.
 This means a device or app using an extension schema this library doesn't know about won't silently lose data — inspect the column names to see what showed up.
+If two different fields would otherwise produce the same column name (e.g. two unrelated extensions both using a leaf named `value`), the first keeps that name and later ones fall back to a column named after their full path instead of being dropped.
 
 `ActivityParser.parse()` (the high-level entry point) filters these out, returning only the canonical columns listed above.
 Use the lower-level `parse_tcx`/`parse_gpx` functions directly if you need access to unrecognized columns.
