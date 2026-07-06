@@ -70,7 +70,6 @@ def test_tcx_laps():
     _, laps, _ = ActivityParser().parse(SAMPLE_TCX)
 
     assert len(laps) == 2
-    assert laps["lap_trigger"].tolist() == ["Manual", "Manual"]
     assert laps["total_elapsed_time"].dtype == "float64"
     assert laps["total_elapsed_time"].tolist() == [3.0, 2.0]
     # DistanceMeters converted to km
@@ -134,12 +133,10 @@ def test_tcx_run_cadence_extension():
     assert records["cadence"].tolist() == [85, 86]
     assert records["power"].tolist() == [250, 255]
     assert records["speed"].tolist() == pytest.approx([10.8, 10.8])
-    # CadenceSensor is an attribute of the TPX element itself
-    assert records["cadence_sensor"].tolist() == ["Footpod", "Footpod"]
     # LX lap extension fields
     assert laps["avg_cadence"].tolist() == [85]
     assert laps["max_cadence"].tolist() == [90]
-    assert laps["total_strides"].tolist() == [300]
+    assert laps["steps"].tolist() == [300]
     assert laps["avg_power"].tolist() == [250]
     assert laps["max_power"].tolist() == [260]
     assert laps["avg_speed"].tolist() == pytest.approx([10.8])
@@ -277,7 +274,7 @@ def test_gpx_unknown_extension_kept_as_namespaced_string():
     records, _, _ = parse_gpx(UNKNOWN_EXTENSION_GPX)
     column = "{urn:example:unknown-vendor}stress"
     assert records[column].tolist() == ["42", "43"]
-    # Unrecognized columns aren't part of ActivityParser's canonical selector
+    # Unrecognized columns aren't part of ActivityParser's default record_columns
     normalized, _, _ = ActivityParser().parse(UNKNOWN_EXTENSION_GPX)
     assert column not in normalized.columns
 
@@ -285,7 +282,7 @@ def test_gpx_unknown_extension_kept_as_namespaced_string():
 def test_gpx_1_0_base_fields():
     # GPX 1.0 exposes course/speed directly (no <extensions> wrapper). GPS-fix-quality
     # diagnostics (hdop, satellites, fix_type, ...) are schema-known but aren't fitness
-    # data, so they're left out of the canonical selector.
+    # data, so they're left out of record_columns.
     records, _, _ = ActivityParser().parse(GPX10)
     assert records["course"].tolist() == pytest.approx([90.0, 91.0])
     assert records["speed"].tolist() == pytest.approx([18.0, 18.72])

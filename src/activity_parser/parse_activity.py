@@ -1,40 +1,38 @@
 """Class for parsing FIT, TCX and GPX files into Pandas DataFrames."""
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from os import PathLike
 from pathlib import Path
 from typing import IO, Any
 
 import pandas as pd
 
+from .default_columns import DEFAULT_LAP_COLUMNS, DEFAULT_RECORD_COLUMNS
 from .parse_fit_file import parse_fit
 from .parse_tcx_gpx import parse_gpx, parse_tcx
 
 
-def select_and_rename_cols(
+def select_and_reorder_cols(
     df: pd.DataFrame,
-    selector: Sequence[str],
-    mapper: Mapping[str, str],
+    columns: Sequence[str],
+    include_all_columns: bool,
 ) -> pd.DataFrame:
-    """Select and rename columns from a DataFrame."""
-    cols = [col for col in selector if col in df.columns]
-    return df.loc[:, cols].rename(columns=mapper)
+    """Selects and reorders df's columns.
 
+    Columns from ``columns`` present in ``df`` are selected, in that order; columns
+    absent from ``df`` are omitted.
 
-def coalesce_enhanced_columns(df: pd.DataFrame, pairs: Mapping[str, str]) -> pd.DataFrame:
-    """Prefers each enhanced FIT column's values over its base counterpart.
-
-    Newer devices sometimes write only the enhanced field (e.g. ``enhanced_altitude``),
-    leaving the base field (``altitude``) absent entirely; both are already in the same
-    units, so no conversion is needed. ``pairs`` maps base column name to enhanced
-    column name.
+    If ``include_all_columns`` is True, any of ``df``'s remaining columns not in
+    ``columns`` are appended afterward, in their original order.
     """
-    df = df.copy()
-    for base, enhanced in pairs.items():
-        if enhanced not in df.columns:
-            continue
-        df[base] = df[enhanced].combine_first(df[base]) if base in df.columns else df[enhanced]
-    return df
+    present = [col for col in columns if col in df.columns]
+    if include_all_columns:
+        selected = set(columns)
+        extra = [col for col in df.columns if col not in selected]
+        ordered = present + extra
+    else:
+        ordered = present
+    return df.loc[:, ordered]
 
 
 def normalize_extension(ext: str) -> str:
@@ -61,162 +59,35 @@ class ActivityParser:
     and TCX files into DataFrames. During parsing, the column names in the resulting
     DataFrames are normalized to a standard set of names to allow for more
     interchangeable use of DataFrames from the different activity file types.
+
+    The output of ``parse`` is controlled by ``record_columns`` and ``lap_columns``,
+    which are set on each instance from ``default_columns``. Reassign or mutate them to
+    select different columns.
     """
 
-    def __init__(self, *, check_crc: bool = False, strict_xml: bool = False) -> None:
-        """Initialize parser settings, selectors, and mappers.
+    def __init__(
+        self,
+        *,
+        include_all_columns: bool = False,
+        check_crc: bool = False,
+        strict_xml: bool = False,
+    ) -> None:
+        """Initialize parser settings and column lists.
 
         Args:
-            check_crc: If True, raise ``fitdecode.FitCRCError`` on a CRC mismatch in
-                FIT files. If False, CRC verification is skipped.
-            strict_xml: If True, raise ``lxml.etree.XMLSyntaxError`` on malformed
-                TCX/GPX XML. If False, parser recovery is enabled.
+            include_all_columns: If True, ``parse`` returns all parsed columns. If
+                False, ``parse`` returns only the columns in ``record_columns`` and
+                ``lap_columns``.
+            check_crc: If True, ``parse`` raises ``fitdecode.FitCRCError`` on a CRC
+                mismatch in FIT files. If False, CRC verification is skipped.
+            strict_xml: If True, ``parse`` raises ``lxml.etree.XMLSyntaxError`` on
+                malformed TCX/GPX XML. If False, parser recovery is enabled.
         """
+        self.record_columns: list[str] = list(DEFAULT_RECORD_COLUMNS)
+        self.lap_columns: list[str] = list(DEFAULT_LAP_COLUMNS)
+        self.include_all_columns = include_all_columns
         self.check_crc = check_crc
         self.strict_xml = strict_xml
-
-        # 'Selectors' specify the list and order of columns to be copied from each
-        # DataFrame (records and laps for each file type), and 'mappers' translate the
-        # imported column names into canonical names
-
-        self.fit_records_selector = [
-            "position_lat",
-            "position_long",
-            "altitude",
-            "distance",
-            "speed",
-            "cadence",
-            "fractional_cadence",
-            "heart_rate",
-            "power",
-            "left_right_balance",
-            "accumulated_power",
-            "temperature",
-        ]
-
-        # TCX/GPX records and laps are already canonically named by parse_tcx_gpx (see
-        # xml_fields); these selectors just pick a stable column order and drop any
-        # namespace-qualified columns for unrecognized elements.
-
-        self.tcx_records_selector = [
-            "latitude",
-            "longitude",
-            "altitude",
-            "distance",
-            "speed",
-            "cadence",
-            "cadence_sensor",
-            "heart_rate",
-            "power",
-            "sensor_state",
-        ]
-
-        # GPX's base schema also has GPS-fix-quality diagnostics (satellites, hdop, ...)
-        # and static descriptive labels (name, cmt, ...); those are still available via
-        # the low-level parse_gpx, but aren't fitness data, so are left out here.
-        self.gpx_records_selector = [
-            "latitude",
-            "longitude",
-            "altitude",
-            "distance",
-            "speed",
-            "cadence",
-            "heart_rate",
-            "power",
-            "temperature",
-            "water_temperature",
-            "depth",
-            "course",
-            "bearing",
-            "sensor",
-        ]
-
-        self.fit_records_mapper = {
-            "position_lat": "latitude",
-            "position_long": "longitude",
-            "altitude": "altitude",
-            "distance": "distance",
-            "speed": "speed",
-            "cadence": "cadence",
-            "fractional_cadence": "fractional_cadence",
-            "heart_rate": "heart_rate",
-            "power": "power",
-            "left_right_balance": "left_right_balance",
-            "accumulated_power": "accumulated_power",
-            "temperature": "temperature",
-        }
-
-        self.fit_laps_selector = [
-            "event",
-            "event_type",
-            "lap_trigger",
-            "start_time",
-            "total_elapsed_time",
-            "total_timer_time",
-            "start_position_lat",
-            "start_position_long",
-            "end_position_lat",
-            "end_position_long",
-            "total_distance",
-            "total_ascent",
-            "total_descent",
-            "avg_vam",
-            "avg_speed",
-            "max_speed",
-            "avg_cadence",
-            "max_cadence",
-            "avg_fractional_cadence",
-            "max_fractional_cadence",
-            "total_strokes",
-            "avg_heart_rate",
-            "max_heart_rate",
-            "time_in_hr_zone",
-            "avg_power",
-            "max_power",
-            "normalized_power",
-            "left_right_balance",
-            "time_in_power_zone",
-            "total_work",
-            "avg_temperature",
-            "max_temperature",
-            "total_calories",
-            "total_fat_calories",
-            "sport",
-            "sub_sport",
-        ]
-
-        self.tcx_laps_selector = [
-            "lap_trigger",
-            "start_time",
-            "total_elapsed_time",
-            "total_distance",
-            "avg_speed",
-            "max_speed",
-            "avg_cadence",
-            "max_cadence",
-            "total_strides",
-            "avg_heart_rate",
-            "max_heart_rate",
-            "avg_power",
-            "max_power",
-            "total_calories",
-            "intensity",
-            "notes",
-        ]
-
-        # Just use the FIT names for lap data as canonical
-        self.fit_laps_mapper = {}
-
-        # Newer devices sometimes write only the higher-precision enhanced_* fields,
-        # omitting their base counterparts entirely; prefer enhanced where present.
-        self.fit_records_enhanced_pairs = {
-            "altitude": "enhanced_altitude",
-            "speed": "enhanced_speed",
-        }
-        self.fit_laps_enhanced_pairs = {
-            "avg_speed": "enhanced_avg_speed",
-            "max_speed": "enhanced_max_speed",
-        }
 
     def parse(
         self,
@@ -225,10 +96,9 @@ class ActivityParser:
     ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
         """Loads a FIT, TCX or GPX activity into Pandas DataFrames.
 
-        During import, column names in ``records`` and ``laps`` are normalized into a
-        canonical set of names. Note this function does not guarantee that all canonical
-        columns appear in the output, it only renames the columns that are present in
-        the activity file.
+        Output columns come from ``record_columns``/``lap_columns``, plus any extra
+        columns if ``include_all_columns`` is set. Not all columns are guaranteed to
+        appear, only those present in the activity file.
 
         Args:
             file: Binary file-like or path-like object. A path-like argument ending in
@@ -249,36 +119,19 @@ class ActivityParser:
 
         if ext_normalized == "fit":
             records, laps, extra = parse_fit(file, check_crc=self.check_crc)
-            records = coalesce_enhanced_columns(records, self.fit_records_enhanced_pairs)
-            records = select_and_rename_cols(
-                records,
-                self.fit_records_selector,
-                self.fit_records_mapper,
-            )
-            records.rename_axis("time", inplace=True)
-            laps = coalesce_enhanced_columns(laps, self.fit_laps_enhanced_pairs)
-            laps = select_and_rename_cols(
-                laps,
-                self.fit_laps_selector,
-                self.fit_laps_mapper,
-            )
 
         elif ext_normalized == "tcx":
-            # parse_tcx already emits canonically-named columns; these selectors just
-            # pick a stable order and drop unrecognized-element columns.
             records, laps, extra = parse_tcx(file, strict_xml=self.strict_xml)
-            records = select_and_rename_cols(records, self.tcx_records_selector, {})
-            records.rename_axis("time", inplace=True)
-            laps = select_and_rename_cols(laps, self.tcx_laps_selector, {})
 
         elif ext_normalized == "gpx":
-            # parse_gpx already emits canonically-named columns; see tcx branch above.
+            # Note GPX files have no lap information; laps is always empty.
             records, laps, extra = parse_gpx(file, strict_xml=self.strict_xml)
-            records = select_and_rename_cols(records, self.gpx_records_selector, {})
-            records.rename_axis("time", inplace=True)
-            # Note GPX files have no lap information
 
         else:
             raise ValueError(f"File type not supported: {ext_normalized}")
+
+        records = select_and_reorder_cols(records, self.record_columns, self.include_all_columns)
+        records.rename_axis("time", inplace=True)
+        laps = select_and_reorder_cols(laps, self.lap_columns, self.include_all_columns)
 
         return records, laps, extra

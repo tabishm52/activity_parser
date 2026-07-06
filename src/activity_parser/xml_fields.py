@@ -167,10 +167,7 @@ TCX_LAP_FIELDS: dict[FieldPath, XmlField] = {
     ((TCX_NS, "Extensions"), (AEXT_NS, "LX"), (AEXT_NS, "MaxRunCadence")): XmlField(
         "max_cadence", NUMERIC
     ),
-    # Reusing FIT's "total_strides" name for Garmin's running step count.
-    ((TCX_NS, "Extensions"), (AEXT_NS, "LX"), (AEXT_NS, "Steps")): XmlField(
-        "total_strides", NUMERIC
-    ),
+    ((TCX_NS, "Extensions"), (AEXT_NS, "LX"), (AEXT_NS, "Steps")): XmlField("steps", NUMERIC),
     ((TCX_NS, "Extensions"), (AEXT_NS, "LX"), (AEXT_NS, "AvgWatts")): XmlField(
         "avg_power", NUMERIC
     ),
