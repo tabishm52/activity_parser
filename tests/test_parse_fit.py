@@ -9,7 +9,12 @@ import pandas as pd
 import pytest
 
 from activity_parser import ActivityParser
-from activity_parser.parse_fit_file import coalesce_enhanced_columns, parse_fit
+from activity_parser.parse_fit_file import (
+    add_fractional_columns,
+    coalesce_enhanced_columns,
+    parse_fit,
+    split_left_right_balance,
+)
 
 FILES = Path(__file__).parent / "files" / "fit"
 EDGE_820 = FILES / "garmin-edge-820-bike.fit"
@@ -76,6 +81,12 @@ def test_parse_fit_coalesces_enhanced_columns():
     assert (laps["max_speed"] == laps["enhanced_max_speed"]).all()
 
 
+def test_parse_fit_combines_fractional_cadence():
+    _, laps, _ = parse_fit(EDGE_820)
+    assert laps["avg_cadence"].iloc[0] == pytest.approx(68.320312)
+    assert laps["max_cadence"].iloc[0] == pytest.approx(71.0)
+
+
 def test_parse_fenix_5_values():
     records, _, _ = parse_fit(FENIX_5)
     assert len(records) == 19
@@ -93,7 +104,6 @@ def test_activity_parser_canonical_columns():
         "distance",
         "speed",
         "cadence",
-        "fractional_cadence",
         "heart_rate",
         "temperature",
     ]
@@ -153,6 +163,61 @@ def test_coalesce_enhanced_columns_noop_without_enhanced_column():
     out = coalesce_enhanced_columns(df, {"altitude": "enhanced_altitude"})
     assert list(out["altitude"]) == [100.0, 200.0]
     assert "enhanced_altitude" not in out.columns
+
+
+def test_add_fractional_columns_sums_both_present():
+    df = pd.DataFrame({"cadence": [90.0, 85.0], "fractional_cadence": [0.5, 0.25]})
+    out = add_fractional_columns(df, {"cadence": "fractional_cadence"})
+    assert out["cadence"].tolist() == pytest.approx([90.5, 85.25])
+
+
+def test_add_fractional_columns_treats_missing_fractional_value_as_zero():
+    df = pd.DataFrame({"cadence": [90.0, 85.0], "fractional_cadence": [0.5, None]})
+    out = add_fractional_columns(df, {"cadence": "fractional_cadence"})
+    assert out["cadence"].tolist() == pytest.approx([90.5, 85.0])
+
+
+def test_add_fractional_columns_fills_missing_base_column():
+    df = pd.DataFrame({"fractional_cadence": [0.5, 0.25]})
+    out = add_fractional_columns(df, {"cadence": "fractional_cadence"})
+    assert out["cadence"].tolist() == pytest.approx([0.5, 0.25])
+
+
+def test_add_fractional_columns_noop_without_fractional_column():
+    df = pd.DataFrame({"cadence": [90.0, 85.0]})
+    out = add_fractional_columns(df, {"cadence": "fractional_cadence"})
+    assert out["cadence"].tolist() == [90.0, 85.0]
+    assert "fractional_cadence" not in out.columns
+
+
+def test_split_left_right_balance_decodes_right_flag():
+    # 180 = 0x80 | 52: right flag set, 52% -> right leg contributes 52%.
+    df = pd.DataFrame({"left_right_balance": [180]})
+    out = split_left_right_balance(df)
+    assert out["right_balance"].tolist() == pytest.approx([52.0])
+    assert out["left_balance"].tolist() == pytest.approx([48.0])
+    assert "left_right_balance" not in out.columns
+
+
+def test_split_left_right_balance_decodes_left_flag():
+    # 52 = no flag: left leg contributes 52%.
+    df = pd.DataFrame({"left_right_balance": [52]})
+    out = split_left_right_balance(df)
+    assert out["left_balance"].tolist() == pytest.approx([52.0])
+    assert out["right_balance"].tolist() == pytest.approx([48.0])
+
+
+def test_split_left_right_balance_preserves_missing_values():
+    df = pd.DataFrame({"left_right_balance": [180, None]})
+    out = split_left_right_balance(df)
+    assert out["right_balance"].iloc[1] != out["right_balance"].iloc[1]  # NaN
+
+
+def test_split_left_right_balance_noop_without_column():
+    df = pd.DataFrame({"cadence": [90.0]})
+    out = split_left_right_balance(df)
+    assert "left_balance" not in out.columns
+    assert "right_balance" not in out.columns
 
 
 def test_gz_round_trip(tmp_path):

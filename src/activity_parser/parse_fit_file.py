@@ -30,6 +30,20 @@ FIT_LAPS_ENHANCED_PAIRS: dict[str, str] = {
     "max_speed": "enhanced_max_speed",
 }
 
+# Some fields have integer and fractional parts that we combine in processing
+FIT_RECORDS_FRACTIONAL_PAIRS: dict[str, str] = {
+    "cadence": "fractional_cadence",
+}
+FIT_LAPS_FRACTIONAL_PAIRS: dict[str, str] = {
+    "avg_cadence": "avg_fractional_cadence",
+    "max_cadence": "max_fractional_cadence",
+}
+
+# left_right_balance is a bit-packed byte: bit 0x80 flags the right side, and the
+# remaining 7 bits (0x7F) are that side's percentage contribution directly (0-100)
+LEFT_RIGHT_BALANCE_RIGHT_FLAG = 0x80
+LEFT_RIGHT_BALANCE_PERCENT_MASK = 0x7F
+
 
 def coalesce_enhanced_columns(df: pd.DataFrame, pairs: Mapping[str, str]) -> pd.DataFrame:
     """Prefers each enhanced FIT column's values over its base counterpart."""
@@ -38,6 +52,31 @@ def coalesce_enhanced_columns(df: pd.DataFrame, pairs: Mapping[str, str]) -> pd.
         if enhanced not in df.columns:
             continue
         df[base] = df[enhanced].combine_first(df[base]) if base in df.columns else df[enhanced]
+    return df
+
+
+def add_fractional_columns(df: pd.DataFrame, pairs: Mapping[str, str]) -> pd.DataFrame:
+    """Adds each fractional-precision FIT column into its base cadence counterpart."""
+    df = df.copy()
+    for base, fractional in pairs.items():
+        if fractional not in df.columns:
+            continue
+        df[base] = df[base] + df[fractional].fillna(0) if base in df.columns else df[fractional]
+    return df
+
+
+def split_left_right_balance(df: pd.DataFrame, column: str = "left_right_balance") -> pd.DataFrame:
+    """Splits FIT's bit-packed left_right_balance byte into left_balance/right_balance."""
+    if column not in df.columns:
+        return df
+    df = df.copy()
+    raw = df.pop(column)
+    present = raw.dropna().astype(int)
+    is_right = (present & LEFT_RIGHT_BALANCE_RIGHT_FLAG) != 0
+    percent = (present & LEFT_RIGHT_BALANCE_PERCENT_MASK).astype(float)
+    right = percent.where(is_right, 100 - percent)
+    df["left_balance"] = (100 - right).reindex(df.index)
+    df["right_balance"] = right.reindex(df.index)
     return df
 
 
@@ -94,10 +133,14 @@ def parse_fit_frames(
     records = records[~records.index.duplicated()]
 
     records = coalesce_enhanced_columns(records, FIT_RECORDS_ENHANCED_PAIRS)
+    records = add_fractional_columns(records, FIT_RECORDS_FRACTIONAL_PAIRS)
+    records = split_left_right_balance(records)
     records = records.rename(columns=FIT_RECORD_RENAME)
 
     laps = pd.DataFrame(laps_rows)
     laps = coalesce_enhanced_columns(laps, FIT_LAPS_ENHANCED_PAIRS)
+    laps = add_fractional_columns(laps, FIT_LAPS_FRACTIONAL_PAIRS)
+    laps = split_left_right_balance(laps)
 
     extra: dict[str, Any] = {}
     for name, rows in extra_rows.items():
