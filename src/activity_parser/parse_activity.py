@@ -3,11 +3,11 @@
 from collections.abc import Sequence
 from os import PathLike
 from pathlib import Path
-from typing import IO, Any
+from typing import IO
 
 import pandas as pd
 
-from .default_columns import DEFAULT_LAP_COLUMNS, DEFAULT_RECORD_COLUMNS
+from .output import DEFAULT_LAP_COLUMNS, DEFAULT_RECORD_COLUMNS, Activity
 from .parse_fit_file import parse_fit
 from .parse_tcx_gpx import parse_gpx, parse_tcx
 
@@ -93,7 +93,7 @@ class ActivityParser:
         self,
         file: str | PathLike[str] | IO[bytes],
         ext: str | None = None,
-    ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
+    ) -> tuple[pd.DataFrame, pd.DataFrame, Activity]:
         """Loads a FIT, TCX or GPX activity into Pandas DataFrames.
 
         Output columns come from ``record_columns``/``lap_columns``, plus any extra
@@ -108,7 +108,7 @@ class ActivityParser:
                 the name).
 
         Returns:
-            Tuple containing records, laps, and selected extra metadata.
+            Tuple containing records, laps, and an ``Activity`` summary.
         """
         if ext is not None:
             ext_normalized = normalize_extension(ext)
@@ -118,14 +118,14 @@ class ActivityParser:
             raise ValueError("ext must be provided when file is a file-like object.")
 
         if ext_normalized == "fit":
-            records, laps, extra = parse_fit(file, check_crc=self.check_crc)
+            records, laps, activity = parse_fit(file, check_crc=self.check_crc)
 
         elif ext_normalized == "tcx":
-            records, laps, extra = parse_tcx(file, strict_xml=self.strict_xml)
+            records, laps, activity = parse_tcx(file, strict_xml=self.strict_xml)
 
         elif ext_normalized == "gpx":
             # Note GPX files have no lap information; laps is always empty.
-            records, laps, extra = parse_gpx(file, strict_xml=self.strict_xml)
+            records, laps, activity = parse_gpx(file, strict_xml=self.strict_xml)
 
         else:
             raise ValueError(f"File type not supported: {ext_normalized}")
@@ -134,4 +134,4 @@ class ActivityParser:
         records.rename_axis("time", inplace=True)
         laps = select_and_reorder_cols(laps, self.lap_columns, self.include_all_columns)
 
-        return records, laps, extra
+        return records, laps, activity

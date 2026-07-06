@@ -11,6 +11,8 @@ from typing import IO, TYPE_CHECKING, Any
 import fitdecode
 import pandas as pd
 
+from .output import Activity
+
 if TYPE_CHECKING:
     from _typeshed import SupportsRead
 
@@ -97,14 +99,44 @@ def frame_to_dict(frame: fitdecode.FitDataMessage) -> dict[str, Any]:
     return {field.name: field.value for field in frame.fields}
 
 
+def build_activity(session: dict[str, Any] | None, file_id: dict[str, Any] | None) -> Activity:
+    """Builds an ``Activity`` summary from a FIT file's ``session``/``file_id`` messages."""
+    session = session or {}
+    file_id = file_id or {}
+
+    start_time = session.get("start_time")
+    if start_time is not None:
+        start_time = pd.Timestamp(start_time)
+
+    creator = file_id.get("product_name")
+    if creator is None:
+        manufacturer = file_id.get("manufacturer")
+        product = file_id.get("garmin_product") or file_id.get("product")
+        creator = " ".join(str(part) for part in (manufacturer, product) if part) or None
+
+    return Activity(
+        sport=session.get("sport"),
+        start_time=start_time,
+        total_elapsed_time=session.get("total_elapsed_time"),
+        total_distance=session.get("total_distance"),
+        total_calories=session.get("total_calories"),
+        avg_heart_rate=session.get("avg_heart_rate"),
+        max_heart_rate=session.get("max_heart_rate"),
+        avg_speed=session.get("avg_speed"),
+        max_speed=session.get("max_speed"),
+        creator=creator,
+    )
+
+
 def parse_fit_frames(
     fit_file: SupportsRead[bytes],
     check_crc: bool = False,
-) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
+) -> tuple[pd.DataFrame, pd.DataFrame, Activity]:
     """Parse FIT frames from an open file object."""
     records_rows: list[dict[str, Any]] = []
     laps_rows: list[dict[str, Any]] = []
-    extra_rows: dict[str, list[dict[str, Any]]] = {}
+    session: dict[str, Any] | None = None
+    file_id: dict[str, Any] | None = None
 
     for frame in copy_fit_frames(fit_file, check_crc=check_crc):
         row = frame_to_dict(frame)
@@ -112,8 +144,10 @@ def parse_fit_frames(
             records_rows.append(row)
         elif frame.name == "lap":
             laps_rows.append(row)
-        else:
-            extra_rows.setdefault(frame.name, []).append(row)
+        elif frame.name == "session" and session is None:
+            session = row
+        elif frame.name == "file_id" and file_id is None:
+            file_id = row
 
     records = pd.DataFrame(records_rows)
 
@@ -142,28 +176,26 @@ def parse_fit_frames(
     laps = add_fractional_columns(laps, FIT_LAPS_FRACTIONAL_PAIRS)
     laps = split_left_right_balance(laps)
 
-    extra: dict[str, Any] = {}
-    for name, rows in extra_rows.items():
-        if len(rows) == 1:
-            extra[name] = rows[0]
-        else:
-            extra[name] = pd.DataFrame(rows)
+    activity = build_activity(session, file_id)
 
-    return records, laps, extra
+    return records, laps, activity
 
 
 def parse_fit(
     file: str | PathLike[str] | IO[bytes],
     check_crc: bool = False,
-) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
+) -> tuple[pd.DataFrame, pd.DataFrame, Activity]:
     """Loads a FIT activity into Pandas DataFrames.
 
     Known message types and fields are converted to typed, canonically-named columns.
     Unknown message types and fields are returned under fitdecode's ``unknown_<num>``
-    names.
+    names. The ``session`` and ``file_id`` messages are summarized into the returned
+    ``Activity``; all other message types (``device_info``, proprietary ``unknown_<n>``
+    messages, etc.) are discarded.
 
     Assumes that the FIT file is all one activity, i.e. chained FIT files will be
-    merged into one set of return values.
+    merged into one set of return values. If a file has more than one ``session`` or
+    ``file_id`` message, only the first of each is used.
 
     Args:
         file: File-like or path-like object. A path-like argument ending in ``.gz`` will
@@ -172,7 +204,7 @@ def parse_fit(
             FIT file. If False, CRC verification is skipped.
 
     Returns:
-        Tuple containing records, laps, and additional metadata.
+        Tuple containing records, laps, and an ``Activity`` summary.
     """
     is_path = isinstance(file, (str, PathLike))
 
@@ -180,8 +212,8 @@ def parse_fit(
         ext = Path(file).suffix
         opener = gzip.open if ext.lower() == ".gz" else open
         with opener(file, "rb") as fit_file:
-            records, laps, extra = parse_fit_frames(fit_file, check_crc=check_crc)
+            records, laps, activity = parse_fit_frames(fit_file, check_crc=check_crc)
     else:
-        records, laps, extra = parse_fit_frames(file, check_crc=check_crc)
+        records, laps, activity = parse_fit_frames(file, check_crc=check_crc)
 
-    return records, laps, extra
+    return records, laps, activity

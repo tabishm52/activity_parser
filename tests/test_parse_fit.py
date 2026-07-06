@@ -23,25 +23,20 @@ FENIX_5 = FILES / "garmin-fenix-5-bike.fit"
 
 @pytest.mark.parametrize("path", [EDGE_820, FENIX_5], ids=lambda p: p.stem)
 def test_parse_fit_records_index(path):
-    records, laps, extra = parse_fit(path)
+    records, laps, activity = parse_fit(path)
     assert records.index.name == "timestamp"
     assert isinstance(records.index, pd.DatetimeIndex)
     assert records.index.is_unique
     assert not records.index.hasnans
     assert len(laps) == 1
-    assert "session" in extra
-    assert "file_id" in extra
+    assert activity.sport is not None
+    assert activity.creator is not None
 
 
 def test_parse_fit_keeps_unknown_record_fields():
     records, _, _ = parse_fit(EDGE_820)
     assert "unknown_61" in records.columns
     assert "unknown_66" in records.columns
-
-
-def test_parse_fit_keeps_unknown_messages_in_extra():
-    _, _, extra = parse_fit(EDGE_820)
-    assert "unknown_22" in extra
 
 
 def test_activity_parser_drops_unknown_fields_from_canonical_output():

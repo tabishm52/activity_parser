@@ -1,4 +1,8 @@
-"""Default column lists returned by ``ActivityParser``, shared across FIT/TCX/GPX."""
+"""Defines the shape of ``parse()``'s return values, shared across FIT/TCX/GPX."""
+
+from dataclasses import dataclass
+
+import pandas as pd
 
 DEFAULT_RECORD_COLUMNS: tuple[str, ...] = (
     "latitude",
@@ -52,3 +56,24 @@ DEFAULT_LAP_COLUMNS: tuple[str, ...] = (
     "total_calories",
     "total_fat_calories",
 )
+
+
+@dataclass(frozen=True)
+class Activity:
+    """File-level summary, present across FIT/TCX/GPX.
+
+    Fields are ``None`` when the source format/file doesn't record them. Values are
+    transcribed from the file, never computed/derived from records or laps.
+    """
+
+    sport: str | None = None
+    start_time: pd.Timestamp | None = None
+    total_elapsed_time: float | None = None  # seconds
+    total_distance: float | None = None  # km
+    total_calories: float | None = None
+    avg_heart_rate: float | None = None
+    max_heart_rate: float | None = None
+    avg_speed: float | None = None  # kph
+    max_speed: float | None = None  # kph
+    creator: str | None = None  # device/app that recorded or wrote the file
+    notes: str | None = None

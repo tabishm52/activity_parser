@@ -28,12 +28,14 @@ parser = activity_parser.ActivityParser()
 Parse FIT, TCX and GPX files into normalized DataFrames:
 
 ```python
-records, laps, extra = parser.parse('path/to/fit_file.fit')
-records, laps, extra = parser.parse('path/to/gpx_file.gpx')
-records, laps, extra = parser.parse('path/to/tcx_file.tcx')
+records, laps, activity = parser.parse('path/to/fit_file.fit')
+records, laps, activity = parser.parse('path/to/gpx_file.gpx')
+records, laps, activity = parser.parse('path/to/tcx_file.tcx')
 ```
 
-Each file is assumed to contain a single activity: multiple activities/tracks (chained FIT files, multi-activity TCX, multi-track GPX) are merged into one set of results, possibly over-writing some fields.
+Each file is assumed to contain a single activity.
+Multiple activities/tracks (chained FIT files, multi-activity TCX, multi-track GPX) have their records/laps merged into one set of results.
+In those cases, the returned `Activity` summary reflects only the first activity/session in the file.
 
 ## Output data
 
@@ -46,10 +48,11 @@ time
 2026-01-05 08:00:01+00:00      0.01   36.0       81         101
 ```
 
-Column names and units are standardized across source formats for known field types.
-Unknown fields are omitted from the output by default.
-Column selection (`record_columns`/`lap_columns`) and whether unknown fields are included (`include_all_columns`) can both be customized on `ActivityParser`; see its docstring for details.
-Not every column appears in every file: `parse()` only includes columns actually present in the activity file.
+A few notes on column handling:
+
+- Column names and units are standardized across source formats for known field types.
+- Unknown fields are omitted by default; customize this (or which columns are selected) via `record_columns`/`lap_columns`/`include_all_columns` on `ActivityParser` — see its docstring for details.
+- Not every column appears in every file: `parse()` only includes columns actually present.
 
 ### Records
 
@@ -75,7 +78,7 @@ Fields marked with (\*) are exporter-dependent.
 ### Laps
 
 GPX files have no lap data, so `laps` is always an empty DataFrame for GPX.
-Fields marked with (\*) are exporter-dependent: TCX only gets these from Garmin's `ActivityExtension`/v2 `LX` block, not TCX's base lap schema.
+Fields marked with (\*) are exporter-dependent.
 
 | Column | Unit | FIT | TCX |
 |---|---|:-:|:-:|
@@ -104,12 +107,25 @@ Fields marked with (\*) are exporter-dependent: TCX only gets these from Garmin'
 | `total_calories` | kcal | Yes | Yes |
 | `total_fat_calories` | kcal | Yes | — |
 
-### Extra
+### Activity
 
-`extra` is a dict of leftover, format-specific metadata passed through with its native field names, and its shape differs by format.
-For FIT, it's keyed by FIT message name (e.g. `session`, `device_info`).
-For TCX/GPX, it's a single dict of the root element's attributes/fields (e.g. `Creator`, `Id`).
-Treat it as raw metadata to inspect per-format rather than something to consume generically.
+`activity` is an `Activity` dataclass instance: a small file-level summary.
+Fields are `None` when the source format/file doesn't record them.
+Values are transcribed from the file, never computed/derived from records or laps.
+
+| Field | Unit | FIT | TCX | GPX |
+|---|---|:-:|:-:|:-:|
+| `sport` | — | Yes | Yes | — |
+| `start_time` | — | Yes | Yes | Yes (\*) |
+| `total_elapsed_time` | seconds | Yes | — | — |
+| `total_distance` | km | Yes | — | — |
+| `total_calories` | kcal | Yes | — | — |
+| `avg_heart_rate`, `max_heart_rate` | bpm | Yes | — | — |
+| `avg_speed`, `max_speed` | kph | Yes | — | — |
+| `creator` | — | Yes | Yes | Yes |
+| `notes` | — | — | Yes | Yes |
+
+(\*) GPX's `start_time` comes from `metadata/time`, which is technically the file's export time rather than the activity's start.
 
 ## Source format notes
 

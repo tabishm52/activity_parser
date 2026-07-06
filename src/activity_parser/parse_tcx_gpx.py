@@ -13,6 +13,7 @@ from typing import IO, cast
 import pandas as pd
 from lxml import etree
 
+from .output import Activity
 from .xml_fields import (
     GPX_TRACKPOINT_FIELDS,
     TCX_LAP_FIELDS,
@@ -22,6 +23,7 @@ from .xml_fields import (
     FieldPath,
     FieldPathStep,
     XmlField,
+    to_datetime,
 )
 
 
@@ -33,39 +35,45 @@ def remove_elements(root: etree._Element, *tags: str) -> None:
             parent.remove(element)
 
 
-def extract_xml_fields(
-    element: etree._Element,
-) -> Iterator[tuple[str, str | None]]:
-    """Yields (name, value) pairs recursively through an XML element.
+def _parse_timestamp(text: str | None) -> pd.Timestamp | None:
+    """Parses a single ISO8601 timestamp, or ``None`` if absent/unparseable."""
+    if text is None:
+        return None
+    parsed = to_datetime(pd.Series([text])).iloc[0]
+    return None if pd.isna(parsed) else parsed
 
-    Used only for the ``extra`` metadata dict, which pulls whatever data remains once
-    records/laps are removed.
-    """
-    # Iterating with "*" matches only true elements and drops e.g. comments
-    for el in element.iter("*"):
-        # Some (name, value) pairs are stored as XML attributes
-        for key, value in el.attrib.items():
-            qname = etree.QName(key)
-            if qname.namespace == XSI_NS and qname.localname == "type":
-                continue
-            yield qname.localname, cast(str, value)
 
-        # In a TCX file, some values are buried in a 'Value' element
-        if el.text is None or el.text.isspace():
-            try:
-                child = next(el.iterchildren("*"))
-                parent_localname = etree.QName(el).localname
-                child_localname = etree.QName(child).localname
-                if child_localname == "Value":
-                    yield parent_localname, child.text
-            except StopIteration:
-                pass
+def _find_text(element: etree._Element | None, tag: str) -> str | None:
+    """``element.find(tag).text``, tolerating a missing ``element`` or child."""
+    if element is None:
+        return None
+    child = element.find(tag)
+    return child.text if child is not None else None
 
-        # But most values are recorded as leaf element text
-        else:
-            localname = etree.QName(el).localname
-            if localname != "Value":
-                yield localname, el.text
+
+def tcx_activity(root: etree._Element) -> Activity:
+    """Builds an ``Activity`` summary from a TCX file's (first) ``Activity`` element."""
+    activity_el = root.find(".//{*}Activity")
+    if activity_el is None:
+        return Activity()
+
+    creator_el = activity_el.find("{*}Creator")
+    return Activity(
+        sport=activity_el.get("Sport"),
+        start_time=_parse_timestamp(_find_text(activity_el, "{*}Id")),
+        creator=_find_text(creator_el, "{*}Name"),
+        notes=_find_text(activity_el, "{*}Notes"),
+    )
+
+
+def gpx_activity(root: etree._Element) -> Activity:
+    """Builds an ``Activity`` summary from a GPX file's root/``metadata`` elements."""
+    metadata_el = root.find("{*}metadata")
+    return Activity(
+        start_time=_parse_timestamp(_find_text(metadata_el, "{*}time")),
+        creator=root.get("creator"),
+        notes=_find_text(metadata_el, "{*}desc"),
+    )
 
 
 def walk_fields(element: etree._Element) -> Iterator[tuple[FieldPath, str]]:
@@ -166,15 +174,16 @@ def _index_by_time(records: pd.DataFrame) -> pd.DataFrame:
 def parse_tcx(
     file: str | PathLike[str] | IO[str] | IO[bytes],
     strict_xml: bool = False,
-) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, str | None]]:
+) -> tuple[pd.DataFrame, pd.DataFrame, Activity]:
     """Loads a TCX activity into Pandas DataFrames.
 
     Known elements/attributes are converted to typed, canonically-named columns.
     Unknown elements/attributes are returned under a namespace-qualified name, e.g.
     ``{namespace}localname``.
 
-    Assumes that the TCX file is all one activity. Files with multiple activities will
-    be merged into one set of return values, possibly over-writing some fields.
+    Assumes that the TCX file is all one activity. If a file has multiple ``Activity``
+    elements, only the first is used to build the returned ``Activity`` summary; records
+    and laps from all of them are still merged together.
 
     Args:
         file: File-like or path-like object. A path-like argument ending in ``.gz`` will
@@ -183,7 +192,7 @@ def parse_tcx(
             False, parser recovery is enabled.
 
     Returns:
-        Tuple containing records, laps, and additional metadata.
+        Tuple containing records, laps, and an ``Activity`` summary.
     """
     parser = etree.XMLParser(recover=not strict_xml)
     root = etree.parse(file, parser).getroot()
@@ -191,31 +200,29 @@ def parse_tcx(
     records = build_dataframe(root.iter("{*}Trackpoint"), TCX_TRACKPOINT_FIELDS)
     records = _index_by_time(records)
 
+    # Strip Track/Trackpoint first: each Lap's walk is recursive, so without this its
+    # nested Trackpoint fields would be misattributed as unrecognized Lap-level columns.
     remove_elements(root, "{*}Track")
-
     laps = build_dataframe(root.iter("{*}Lap"), TCX_LAP_FIELDS)
 
-    remove_elements(root, "{*}Lap")
+    activity = tcx_activity(root)
 
-    extra = dict(extract_xml_fields(root))
-    extra.pop("schemaLocation", None)
-
-    return records, laps, extra
+    return records, laps, activity
 
 
 def parse_gpx(
     file: str | PathLike[str] | IO[str] | IO[bytes],
     strict_xml: bool = False,
-) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, str | None]]:
+) -> tuple[pd.DataFrame, pd.DataFrame, Activity]:
     """Loads a GPX activity into a Pandas DataFrame.
 
     Known elements/attributes are converted to typed, canonically-named columns.
     Unknown elements/attributes are returned under a namespace-qualified name, e.g.
     ``{namespace}localname``.
 
-    Assumes that the GPX file is all one activity. Files with multiple tracks will be
-    merged into one set of return values, possibly over-writing some fields. Waypoints
-    and routes in the GPX file are ignored.
+    Assumes that the GPX file is all one activity. Files with multiple tracks will have
+    their points merged into one set of records. Waypoints and routes in the GPX file
+    are ignored.
 
     Args:
         file: File-like or path-like object. A path-like argument ending in ``.gz`` will
@@ -224,8 +231,8 @@ def parse_gpx(
             False, parser recovery is enabled.
 
     Returns:
-        Tuple containing records, laps, and additional metadata. Note GPX files don't
-        have lap information, so the laps DataFrame will be empty.
+        Tuple containing records, laps, and an ``Activity`` summary. Note GPX files
+        don't have lap information, so the laps DataFrame will be empty.
     """
     parser = etree.XMLParser(recover=not strict_xml)
     root = etree.parse(file, parser).getroot()
@@ -233,9 +240,6 @@ def parse_gpx(
     records = build_dataframe(root.iter("{*}trkpt"), GPX_TRACKPOINT_FIELDS)
     records = _index_by_time(records)
 
-    remove_elements(root, "{*}trkseg", "{*}rte", "{*}wpt")
+    activity = gpx_activity(root)
 
-    extra = dict(extract_xml_fields(root))
-    extra.pop("schemaLocation", None)
-
-    return records, pd.DataFrame(), extra
+    return records, pd.DataFrame(), activity
