@@ -33,8 +33,9 @@ MIXED_CONTENT_TCX = TCX_FILES / "mixed_content.tcx"
 VENDOR_TYPE_ATTRIBUTE_TCX = TCX_FILES / "vendor_type_attribute.tcx"
 DUPLICATE_CADENCE_TCX = TCX_FILES / "duplicate_cadence.tcx"
 LAPS_ONLY_TCX = TCX_FILES / "laps_only.tcx"
-EXTRA_VENDOR_TYPE_ATTRIBUTE_TCX = TCX_FILES / "extra_vendor_type_attribute.tcx"
+ACTIVITY_METADATA_TCX = TCX_FILES / "activity_metadata.tcx"
 LX_NAMESPACE_RESET_TCX = TCX_FILES / "lx_namespace_reset.tcx"
+METADATA_GPX = GPX_FILES / "metadata.gpx"
 
 
 # ---------------------------------------------------------------------------
@@ -82,17 +83,17 @@ def test_tcx_laps():
     assert pd.api.types.is_datetime64_any_dtype(laps["start_time"])
 
 
-def test_tcx_extra():
-    _, _, extra = ActivityParser().parse(SAMPLE_TCX)
-    assert extra["Sport"] == "Biking"
-    assert "schemaLocation" not in extra
+def test_tcx_activity():
+    _, _, activity = ActivityParser().parse(SAMPLE_TCX)
+    assert activity.sport == "Biking"
+    assert activity.start_time == pd.Timestamp("2026-01-05T08:00:00Z")
 
 
-def test_tcx_extra_type_attribute_only_skipped_for_xsi_namespace():
-    # Only genuine xsi:type is schema-validation metadata; a same-named attribute in
-    # another namespace is real data and must be kept.
-    _, _, extra = ActivityParser().parse(EXTRA_VENDOR_TYPE_ATTRIBUTE_TCX)
-    assert extra["type"] == "vendor-real-data"
+def test_tcx_activity_creator_and_notes():
+    _, _, activity = ActivityParser().parse(ACTIVITY_METADATA_TCX)
+    assert activity.sport == "Running"
+    assert activity.creator == "Garmin Forerunner 945"
+    assert activity.notes == "Morning run"
 
 
 def test_tcx_without_position():
@@ -187,7 +188,7 @@ def test_tcx_lx_namespace_reset_does_not_overreach():
 
 
 def test_gpx_records_values():
-    records, laps, extra = ActivityParser().parse(SAMPLE_GPX)
+    records, laps, _ = ActivityParser().parse(SAMPLE_GPX)
 
     assert records.index.name == "time"
     # Duplicate timestamp dropped: 4 trkpt -> 3 rows, first kept
@@ -206,7 +207,18 @@ def test_gpx_records_values():
 
     # GPX has no lap information
     assert laps.empty
-    assert extra["name"] == "Sample Track"
+
+
+def test_gpx_activity():
+    _, _, activity = ActivityParser().parse(SAMPLE_GPX)
+    assert activity.creator == "activity_parser tests"
+    assert activity.start_time == pd.Timestamp("2026-01-05T08:00:00Z")
+
+
+def test_gpx_activity_desc():
+    _, _, activity = ActivityParser().parse(METADATA_GPX)
+    assert activity.creator == "Garmin Connect"
+    assert activity.notes == "Evening ride"
 
 
 def test_gpx_multiple_track_segments():

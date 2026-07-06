@@ -3,7 +3,7 @@
 import re
 from pathlib import Path
 
-from activity_parser.default_columns import DEFAULT_LAP_COLUMNS, DEFAULT_RECORD_COLUMNS
+from activity_parser.output import DEFAULT_LAP_COLUMNS, DEFAULT_RECORD_COLUMNS
 
 README = Path(__file__).parent.parent / "README.md"
 COLUMN_NAME = re.compile(r"`(\w+)`")
@@ -33,5 +33,5 @@ def test_readme_records_table_matches_default_columns():
 
 def test_readme_laps_table_matches_default_columns():
     text = README.read_text()
-    section = _section(text, "### Laps", "### Extra")
+    section = _section(text, "### Laps", "### Activity")
     assert _table_column_names(section) == set(DEFAULT_LAP_COLUMNS)
