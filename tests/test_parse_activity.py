@@ -8,11 +8,11 @@ import pytest
 
 from activity_parser import ActivityParser
 from activity_parser.parse_activity import (
-    coalesce_enhanced_columns,
     infer_extension,
     normalize_extension,
-    select_and_rename_cols,
+    select_and_reorder_cols,
 )
+from activity_parser.xml_fields import TCX_NS
 
 
 def test_normalize_extension_case_and_dot():
@@ -34,36 +34,23 @@ def test_infer_extension():
     assert infer_extension("dir/sub/ride.GPX.GZ") == "gpx"
 
 
-def test_select_and_rename_cols():
+def test_select_and_reorder_cols_selects_and_orders():
     df = pd.DataFrame({"b": [1], "a": [2], "ignored": [3]})
-    out = select_and_rename_cols(df, ["a", "b", "missing"], {"a": "x"})
-    assert list(out.columns) == ["x", "b"]
-    assert out["x"].iloc[0] == 2
+    out = select_and_reorder_cols(df, ["a", "b", "missing"], include_all_columns=False)
+    assert list(out.columns) == ["a", "b"]
+    assert out["a"].iloc[0] == 2
 
 
-def test_coalesce_enhanced_columns_prefers_enhanced_when_both_present():
-    df = pd.DataFrame({"altitude": [100.0, 200.0], "enhanced_altitude": [105.0, 210.0]})
-    out = coalesce_enhanced_columns(df, {"altitude": "enhanced_altitude"})
-    assert list(out["altitude"]) == [105.0, 210.0]
+def test_select_and_reorder_cols_drops_extras_by_default():
+    df = pd.DataFrame({"a": [1], "extra": [2]})
+    out = select_and_reorder_cols(df, ["a"], include_all_columns=False)
+    assert list(out.columns) == ["a"]
 
 
-def test_coalesce_enhanced_columns_falls_back_to_base_where_enhanced_is_null():
-    df = pd.DataFrame({"speed": [10.0, 20.0], "enhanced_speed": [15.0, None]})
-    out = coalesce_enhanced_columns(df, {"speed": "enhanced_speed"})
-    assert list(out["speed"]) == [15.0, 20.0]
-
-
-def test_coalesce_enhanced_columns_fills_missing_base_column():
-    df = pd.DataFrame({"enhanced_speed": [10.0, 20.0]})
-    out = coalesce_enhanced_columns(df, {"speed": "enhanced_speed"})
-    assert list(out["speed"]) == [10.0, 20.0]
-
-
-def test_coalesce_enhanced_columns_noop_without_enhanced_column():
-    df = pd.DataFrame({"altitude": [100.0, 200.0]})
-    out = coalesce_enhanced_columns(df, {"altitude": "enhanced_altitude"})
-    assert list(out["altitude"]) == [100.0, 200.0]
-    assert "enhanced_altitude" not in out.columns
+def test_select_and_reorder_cols_appends_extras_when_included():
+    df = pd.DataFrame({"b": [1], "a": [2], "extra1": [3], "extra2": [4]})
+    out = select_and_reorder_cols(df, ["a", "b"], include_all_columns=True)
+    assert list(out.columns) == ["a", "b", "extra1", "extra2"]
 
 
 def test_parse_file_like_requires_ext():
@@ -86,16 +73,48 @@ def test_parse_explicit_ext_overrides_path(tmp_path):
     assert len(records) == 3
 
 
-def test_tcx_columns_match_selector_order():
+def test_tcx_columns_match_canonical_order():
     # parse_tcx already emits canonical names; ActivityParser only selects/orders them,
     # dropping any namespace-qualified columns for unrecognized elements.
     parser = ActivityParser()
     records, laps, _ = parser.parse(Path(__file__).parent / "files" / "tcx" / "sample.tcx")
-    assert list(records.columns) == [c for c in parser.tcx_records_selector if c in records.columns]
-    assert list(laps.columns) == [c for c in parser.tcx_laps_selector if c in laps.columns]
+    assert list(records.columns) == [c for c in parser.record_columns if c in records.columns]
+    assert list(laps.columns) == [c for c in parser.lap_columns if c in laps.columns]
 
 
-def test_gpx_columns_match_selector_order():
+def test_gpx_columns_match_canonical_order():
     parser = ActivityParser()
     records, _, _ = parser.parse(Path(__file__).parent / "files" / "gpx" / "sample.gpx")
-    assert list(records.columns) == [c for c in parser.gpx_records_selector if c in records.columns]
+    assert list(records.columns) == [c for c in parser.record_columns if c in records.columns]
+
+
+def test_record_columns_is_mutable_per_instance():
+    src = Path(__file__).parent / "files" / "gpx" / "sample.gpx"
+    default_parser = ActivityParser()
+    custom_parser = ActivityParser()
+    custom_parser.record_columns = ["longitude", "latitude"]
+
+    default_records, _, _ = default_parser.parse(src)
+    custom_records, _, _ = custom_parser.parse(src)
+
+    assert list(custom_records.columns) == ["longitude", "latitude"]
+    assert list(default_records.columns) != ["longitude", "latitude"]
+
+
+def test_gpx_include_all_columns_appends_namespace_qualified_column():
+    src = Path(__file__).parent / "files" / "gpx" / "unknown_extension.gpx"
+    records, _, _ = ActivityParser(include_all_columns=True).parse(src)
+    assert "{urn:example:unknown-vendor}stress" in records.columns
+
+    records_default, _, _ = ActivityParser().parse(src)
+    assert "{urn:example:unknown-vendor}stress" not in records_default.columns
+
+
+def test_tcx_include_all_columns_appends_collision_columns():
+    src = Path(__file__).parent / "files" / "tcx" / "unknown_collision.tcx"
+    records, _, _ = ActivityParser(include_all_columns=True).parse(src)
+    assert f"{{{TCX_NS}}}value" in records.columns
+    assert any(col.startswith(f"{{{TCX_NS}}}VendorB/") for col in records.columns)
+
+    records_default, _, _ = ActivityParser().parse(src)
+    assert f"{{{TCX_NS}}}value" not in records_default.columns

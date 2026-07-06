@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import gzip
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from os import PathLike
 from pathlib import Path
 from typing import IO, TYPE_CHECKING, Any
@@ -13,6 +13,32 @@ import pandas as pd
 
 if TYPE_CHECKING:
     from _typeshed import SupportsRead
+
+# FIT fields that we rename in our processing
+FIT_RECORD_RENAME: dict[str, str] = {
+    "position_lat": "latitude",
+    "position_long": "longitude",
+}
+
+# Some fields have higher-precision versions, which we prefer when available
+FIT_RECORDS_ENHANCED_PAIRS: dict[str, str] = {
+    "altitude": "enhanced_altitude",
+    "speed": "enhanced_speed",
+}
+FIT_LAPS_ENHANCED_PAIRS: dict[str, str] = {
+    "avg_speed": "enhanced_avg_speed",
+    "max_speed": "enhanced_max_speed",
+}
+
+
+def coalesce_enhanced_columns(df: pd.DataFrame, pairs: Mapping[str, str]) -> pd.DataFrame:
+    """Prefers each enhanced FIT column's values over its base counterpart."""
+    df = df.copy()
+    for base, enhanced in pairs.items():
+        if enhanced not in df.columns:
+            continue
+        df[base] = df[enhanced].combine_first(df[base]) if base in df.columns else df[enhanced]
+    return df
 
 
 def copy_fit_frames(
@@ -67,7 +93,11 @@ def parse_fit_frames(
     records = records[records.index.notna()]
     records = records[~records.index.duplicated()]
 
+    records = coalesce_enhanced_columns(records, FIT_RECORDS_ENHANCED_PAIRS)
+    records = records.rename(columns=FIT_RECORD_RENAME)
+
     laps = pd.DataFrame(laps_rows)
+    laps = coalesce_enhanced_columns(laps, FIT_LAPS_ENHANCED_PAIRS)
 
     extra: dict[str, Any] = {}
     for name, rows in extra_rows.items():
@@ -85,14 +115,18 @@ def parse_fit(
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     """Loads a FIT activity into Pandas DataFrames.
 
-    Message types and fields fitdecode can't resolve against the FIT SDK profile are
-    kept under fitdecode's ``unknown_<num>`` names. Assumes that the FIT file is all one
-    activity, i.e. chained FIT files will be merged into one set of return values.
+    Known message types and fields are converted to typed, canonically-named columns.
+    Unknown message types and fields are returned under fitdecode's ``unknown_<num>``
+    names.
+
+    Assumes that the FIT file is all one activity, i.e. chained FIT files will be
+    merged into one set of return values.
 
     Args:
         file: File-like or path-like object. A path-like argument ending in ``.gz`` will
             be unzipped before processing.
-        check_crc: If True, raise on a CRC mismatch instead of skipping verification.
+        check_crc: If True, raises ``fitdecode.FitCRCError`` on a CRC mismatch in the
+            FIT file. If False, CRC verification is skipped.
 
     Returns:
         Tuple containing records, laps, and additional metadata.

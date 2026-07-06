@@ -169,13 +169,18 @@ def parse_tcx(
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, str | None]]:
     """Loads a TCX activity into Pandas DataFrames.
 
+    Known elements/attributes are converted to typed, canonically-named columns.
+    Unknown elements/attributes are returned under a namespace-qualified name, e.g.
+    ``{namespace}localname``.
+
     Assumes that the TCX file is all one activity. Files with multiple activities will
     be merged into one set of return values, possibly over-writing some fields.
 
     Args:
         file: File-like or path-like object. A path-like argument ending in ``.gz`` will
             be transparently unzipped before processing.
-        strict_xml: If True, fail on XML parsing errors instead of recovering.
+        strict_xml: If True, raises ``lxml.etree.XMLSyntaxError`` on malformed XML. If
+            False, parser recovery is enabled.
 
     Returns:
         Tuple containing records, laps, and additional metadata.
@@ -204,6 +209,10 @@ def parse_gpx(
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, str | None]]:
     """Loads a GPX activity into a Pandas DataFrame.
 
+    Known elements/attributes are converted to typed, canonically-named columns.
+    Unknown elements/attributes are returned under a namespace-qualified name, e.g.
+    ``{namespace}localname``.
+
     Assumes that the GPX file is all one activity. Files with multiple tracks will be
     merged into one set of return values, possibly over-writing some fields. Waypoints
     and routes in the GPX file are ignored.
@@ -211,7 +220,8 @@ def parse_gpx(
     Args:
         file: File-like or path-like object. A path-like argument ending in ``.gz`` will
             be transparently unzipped before processing.
-        strict_xml: If True, fail on XML parsing errors instead of recovering.
+        strict_xml: If True, raises ``lxml.etree.XMLSyntaxError`` on malformed XML. If
+            False, parser recovery is enabled.
 
     Returns:
         Tuple containing records, laps, and additional metadata. Note GPX files don't
