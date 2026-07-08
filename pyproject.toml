@@ -35,6 +35,7 @@ Issues = "https://github.com/tabishm52/activity_parser/issues"
 
 [dependency-groups]
 dev = [
+    "garmin-fit-sdk",
     "lxml-stubs",
     "pandas-stubs",
     "pre-commit",
