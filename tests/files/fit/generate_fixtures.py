@@ -1,12 +1,11 @@
 """Regenerates the gen-*.fit fixtures using the official garmin-fit-sdk Encoder.
 
-Each fixture targets one guard in parse_fit_file.parse_fit_frames that the two
-vendored real-device fixtures never exercise (see tests/files/README.md). Run with:
+Each fixture targets one guard in parse_fit_file.parse_fit_frames that the vendored
+real-device fixtures never exercise. Run with:
 
     uv run python tests/files/fit/generate_fixtures.py
 
-Output is deterministic (no wall-clock data is embedded), so a re-run should produce
-byte-identical files.
+Output is deterministic, so a re-run should produce byte-identical files.
 """
 
 from __future__ import annotations
@@ -28,10 +27,12 @@ T0 = datetime(2026, 1, 5, 8, 0, 0, tzinfo=UTC)
 
 
 def at(seconds: int) -> datetime:
+    """Returns the timestamp `seconds` after the fixtures' shared start time."""
     return T0 + timedelta(seconds=seconds)
 
 
 def encode(messages: list[dict[str, Any]]) -> bytes:
+    """Encodes a list of FIT messages into file bytes."""
     encoder = Encoder()
     for message in messages:
         encoder.write_mesg(message)
@@ -39,12 +40,12 @@ def encode(messages: list[dict[str, Any]]) -> bytes:
 
 
 def write(name: str, messages: list[dict[str, Any]]) -> None:
+    """Encodes `messages` and writes them to `name` in this directory."""
     (FILES / name).write_bytes(encode(messages))
 
 
 def generate_dup_timestamps() -> None:
-    # Two records share a timestamp; parse_fit_frames must keep the first occurrence
-    # and drop the second.
+    """Two records sharing the same timestamp."""
     write(
         "gen-dup-timestamps.fit",
         [
@@ -56,8 +57,7 @@ def generate_dup_timestamps() -> None:
 
 
 def generate_missing_timestamp() -> None:
-    # A record with no timestamp field at all must be dropped as NaT, not kept with a
-    # synthesized index position.
+    """A record with no timestamp field at all."""
     write(
         "gen-missing-timestamp.fit",
         [
@@ -69,8 +69,7 @@ def generate_missing_timestamp() -> None:
 
 
 def generate_laps_only() -> None:
-    # A manually-logged workout: lap/session/file_id summary data but zero record
-    # messages.
+    """A manually-logged workout: lap/session/file_id summary data, zero records."""
     write(
         "gen-laps-only.fit",
         [
@@ -107,8 +106,7 @@ def generate_laps_only() -> None:
 
 
 def generate_multi_session() -> None:
-    # Two file_id/session messages: build_activity's documented contract is that only
-    # the first of each is used.
+    """Two file_id messages and two session messages."""
     write(
         "gen-multi-session.fit",
         [
@@ -145,8 +143,11 @@ def generate_multi_session() -> None:
 
 
 def generate_left_right_balance() -> None:
-    # left_right_balance is a bit-packed byte (0x80 flags the right side); exercise
-    # both flag states, on both records and a lap summary.
+    """Records and a lap carrying left_right_balance, both flag states.
+
+    left_right_balance is a bit-packed byte: 0x80 flags the right side, and
+    the low 7 bits are that side's percentage contribution.
+    """
     write(
         "gen-left-right-balance.fit",
         [
@@ -176,9 +177,12 @@ def generate_left_right_balance() -> None:
 
 
 def generate_coercion_skip() -> None:
-    # left_power_phase is an array field: a row with two values decodes to a tuple,
-    # making the column object-dtype and non-numeric-coercible, while a sibling
-    # column with only a genuinely missing value (temperature) still coerces fine.
+    """A record field that decodes to a tuple in one row, a scalar in others.
+
+    left_power_phase is an array field; a row with two values decodes to a
+    tuple rather than a scalar. temperature is included alongside it with a
+    genuinely missing value in one row.
+    """
     write(
         "gen-coercion-skip.fit",
         [
@@ -207,6 +211,7 @@ def generate_coercion_skip() -> None:
 
 
 def main() -> None:
+    """Regenerates every gen-*.fit fixture."""
     generate_dup_timestamps()
     generate_missing_timestamp()
     generate_laps_only()
