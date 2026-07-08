@@ -2,6 +2,7 @@
 
 import gzip
 import io
+import struct
 from pathlib import Path
 
 import fitdecode
@@ -19,6 +20,15 @@ from activity_parser.parse_fit_file import (
 FILES = Path(__file__).parent / "files" / "fit"
 EDGE_820 = FILES / "garmin-edge-820-bike.fit"
 FENIX_5 = FILES / "garmin-fenix-5-bike.fit"
+
+
+def empty_fit_bytes() -> bytes:
+    """Builds the smallest valid FIT stream: a 12-byte header and CRC footer, no
+    data messages. check_crc=False (the parse_fit default) skips CRC verification,
+    so the footer value itself is irrelevant.
+    """
+    header = struct.pack("<2BHI4s", 12, 0x10, 100, 0, b".FIT")
+    return header + struct.pack("<H", 0)
 
 
 @pytest.mark.parametrize("path", [EDGE_820, FENIX_5], ids=lambda p: p.stem)
@@ -248,3 +258,15 @@ def test_file_like_input():
 def test_non_fit_bytes_raise():
     with pytest.raises(fitdecode.FitHeaderError):
         parse_fit(io.BytesIO(b"this is not a FIT file"))
+
+
+def test_parse_fit_no_records_yields_empty_datetime_index():
+    # No record messages at all (e.g. a manually-logged workout): records should be
+    # empty with a DatetimeIndex, matching TCX/GPX's laps-only behavior, rather than
+    # falling back to a RangeIndex.
+    records, laps, activity = parse_fit(io.BytesIO(empty_fit_bytes()))
+    assert records.empty
+    assert records.index.name == "timestamp"
+    assert isinstance(records.index, pd.DatetimeIndex)
+    assert laps.empty
+    assert activity.sport is None
