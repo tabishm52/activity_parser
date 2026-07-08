@@ -160,6 +160,8 @@ def parse_fit_frames(
     # FIT files occasionally have duplicate timestamps.
     if "timestamp" in records.columns:
         records = records.set_index("timestamp")
+    elif records.empty:
+        records.index = pd.DatetimeIndex([], name="timestamp")
     else:
         records.index = pd.Index(records.index, name="timestamp")
 
