@@ -12,6 +12,7 @@ import pytest
 from activity_parser import ActivityParser
 from activity_parser.parse_fit_file import (
     add_fractional_columns,
+    build_activity,
     coalesce_enhanced_columns,
     parse_fit,
     split_left_right_balance,
@@ -20,6 +21,14 @@ from activity_parser.parse_fit_file import (
 FILES = Path(__file__).parent / "files" / "fit"
 EDGE_820 = FILES / "garmin-edge-820-bike.fit"
 FENIX_5 = FILES / "garmin-fenix-5-bike.fit"
+FENIX_5_RUN = FILES / "garmin-fenix-5-run.fit"
+DEVELOPER_DATA = FILES / "DeveloperData.fit"
+DUP_TIMESTAMPS = FILES / "gen-dup-timestamps.fit"
+MISSING_TIMESTAMP = FILES / "gen-missing-timestamp.fit"
+LAPS_ONLY = FILES / "gen-laps-only.fit"
+MULTI_SESSION = FILES / "gen-multi-session.fit"
+LEFT_RIGHT_BALANCE = FILES / "gen-left-right-balance.fit"
+COERCION_SKIP = FILES / "gen-coercion-skip.fit"
 
 
 def empty_fit_bytes() -> bytes:
@@ -97,6 +106,17 @@ def test_parse_fenix_5_values():
     assert len(records) == 19
     assert records["heart_rate"].iloc[0] == 77
     assert records["distance"].iloc[-1] == pytest.approx(0.45952)
+
+
+def test_parse_edge_820_activity_values():
+    _, _, activity = parse_fit(EDGE_820)
+    assert activity.sport == "cycling"
+    assert activity.start_time == pd.Timestamp("2017-06-12T16:10:15Z")
+    assert activity.total_distance == pytest.approx(0.45712)
+    assert activity.total_calories == 8
+    assert activity.avg_heart_rate == 116
+    assert activity.max_heart_rate == 121
+    assert activity.creator == "garmin edge_820"
 
 
 def test_activity_parser_canonical_columns():
@@ -270,3 +290,178 @@ def test_parse_fit_no_records_yields_empty_datetime_index():
     assert isinstance(records.index, pd.DatetimeIndex)
     assert laps.empty
     assert activity.sport is None
+
+
+# ---------------------------------------------------------------------------
+# Guards and seams: generated fixtures (see files/fit/generate_fixtures.py)
+# ---------------------------------------------------------------------------
+
+
+def test_parse_fit_drops_duplicate_timestamp_keeping_first():
+    records, _, _ = parse_fit(DUP_TIMESTAMPS)
+    assert records.index.is_unique
+    assert records["heart_rate"].tolist() == [100, 101]
+
+
+def test_parse_fit_drops_record_with_no_timestamp():
+    records, _, _ = parse_fit(MISSING_TIMESTAMP)
+    assert records["heart_rate"].tolist() == [100, 101]
+
+
+def test_parse_fit_laps_only_fixture():
+    records, laps, activity = parse_fit(LAPS_ONLY)
+    assert records.empty
+    assert isinstance(records.index, pd.DatetimeIndex)
+    assert laps["total_distance"].tolist() == pytest.approx([1.0, 1.5])
+    assert laps["total_elapsed_time"].tolist() == [150.0, 150.0]
+    assert activity.sport == "running"
+    assert activity.total_elapsed_time == 300.0
+    assert activity.creator == "garmin 1000"
+
+
+def test_parse_fit_multi_session_uses_first_session_and_file_id():
+    # Docstring contract: with more than one session/file_id message, only the first
+    # of each is used.
+    _, _, activity = parse_fit(MULTI_SESSION)
+    assert activity.sport == "running"
+    assert activity.total_elapsed_time == 60.0
+    assert activity.creator == "garmin 1111"
+
+
+def test_parse_fit_chained_files(tmp_path):
+    # A chained FIT stream is just two FIT sequences back-to-back; parse_fit should
+    # merge their records (both fixtures happen to share 2 real-world timestamps,
+    # which the usual dedup guard drops) and keep only the first file's
+    # session/file_id.
+    chained = tmp_path / "chained.fit"
+    chained.write_bytes(EDGE_820.read_bytes() + FENIX_5.read_bytes())
+
+    records, _, activity = parse_fit(chained)
+    assert len(records) == 15 + 19 - 2
+    assert activity.creator == "garmin edge_820"
+
+
+def test_parse_fit_left_right_balance_end_to_end():
+    records, laps, _ = parse_fit(LEFT_RIGHT_BALANCE)
+    assert records["left_balance"].tolist() == pytest.approx([48.0, 52.0])
+    assert records["right_balance"].tolist() == pytest.approx([52.0, 48.0])
+    assert "left_right_balance" not in records.columns
+    assert laps["left_balance"].tolist() == pytest.approx([48.0])
+    assert laps["right_balance"].tolist() == pytest.approx([52.0])
+
+
+def test_parse_fit_coercion_skips_column_with_non_numeric_value():
+    # left_power_phase is an array field: one row has two values (decodes to a
+    # tuple), making the column object-dtype and un-coercible as a whole, so it must
+    # pass through unchanged while a sibling column with only a genuinely missing
+    # value still coerces to float64.
+    records, _, _ = parse_fit(COERCION_SKIP)
+    assert records["left_power_phase"].tolist() == [
+        pytest.approx(9.84375),
+        (pytest.approx(9.84375), pytest.approx(19.6875)),
+        pytest.approx(29.53125),
+    ]
+    assert records["temperature"].dtype == "float64"
+    assert records["temperature"].tolist()[0::2] == pytest.approx([20.0, 21.0])
+    assert records["temperature"].isna().tolist() == [False, True, False]
+
+
+# ---------------------------------------------------------------------------
+# Vendored real-device files: a running activity and a developer-fields sample
+# ---------------------------------------------------------------------------
+
+
+def test_parse_fenix_5_run_activity_values():
+    _, _, activity = parse_fit(FENIX_5_RUN)
+    assert activity.sport == "running"
+    assert activity.creator == "garmin fenix5"
+
+
+def test_activity_parser_fenix_5_run_canonical_columns():
+    records, laps, _ = ActivityParser().parse(FENIX_5_RUN)
+    assert records.index.name == "time"
+    assert not records.empty
+    assert "start_time" in laps.columns
+    assert "total_distance" in laps.columns
+
+
+def test_developer_field_kept_in_raw_parse():
+    records, _, activity = parse_fit(DEVELOPER_DATA)
+    assert records["doughnuts_earned"].tolist() == [1, 2, 3]
+    assert activity.creator == "dynastream 9001"
+
+
+def test_developer_field_dropped_by_default_kept_with_include_all_columns():
+    default_records, _, _ = ActivityParser().parse(DEVELOPER_DATA)
+    assert "doughnuts_earned" not in default_records.columns
+
+    all_records, _, _ = ActivityParser(include_all_columns=True).parse(DEVELOPER_DATA)
+    assert all_records["doughnuts_earned"].tolist() == [1, 2, 3]
+
+
+# ---------------------------------------------------------------------------
+# build_activity: plain dicts, no fixtures
+# ---------------------------------------------------------------------------
+
+
+def test_build_activity_prefers_product_name():
+    activity = build_activity(
+        session=None,
+        file_id={"product_name": "Edge 820", "manufacturer": "garmin", "product": 1},
+    )
+    assert activity.creator == "Edge 820"
+
+
+def test_build_activity_joins_manufacturer_and_garmin_product():
+    file_id = {"manufacturer": "garmin", "garmin_product": 1000}
+    activity = build_activity(session=None, file_id=file_id)
+    assert activity.creator == "garmin 1000"
+
+
+def test_build_activity_joins_manufacturer_and_product_fallback():
+    activity = build_activity(session=None, file_id={"manufacturer": "wahoo", "product": 42})
+    assert activity.creator == "wahoo 42"
+
+
+def test_build_activity_creator_none_when_no_identifying_fields():
+    activity = build_activity(session=None, file_id={"manufacturer": None, "product": None})
+    assert activity.creator is None
+    activity_empty = build_activity(session=None, file_id={})
+    assert activity_empty.creator is None
+
+
+def test_build_activity_handles_none_session_and_file_id():
+    activity = build_activity(session=None, file_id=None)
+    assert activity == build_activity(session={}, file_id={})
+    assert activity.sport is None
+    assert activity.start_time is None
+    assert activity.creator is None
+
+
+def test_build_activity_converts_start_time_to_timestamp():
+    activity = build_activity(session={"start_time": "2026-01-05T08:00:00Z"}, file_id=None)
+    assert activity.start_time == pd.Timestamp("2026-01-05T08:00:00Z")
+
+
+def test_build_activity_reads_session_fields():
+    activity = build_activity(
+        session={
+            "sport": "running",
+            "total_elapsed_time": 60.0,
+            "total_distance": 1.0,
+            "total_calories": 5,
+            "avg_heart_rate": 90,
+            "max_heart_rate": 112,
+            "avg_speed": 9.9,
+            "max_speed": 13.1,
+        },
+        file_id=None,
+    )
+    assert activity.sport == "running"
+    assert activity.total_elapsed_time == 60.0
+    assert activity.total_distance == 1.0
+    assert activity.total_calories == 5
+    assert activity.avg_heart_rate == 90
+    assert activity.max_heart_rate == 112
+    assert activity.avg_speed == 9.9
+    assert activity.max_speed == 13.1
