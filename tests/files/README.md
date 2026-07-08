@@ -10,13 +10,6 @@ Organized into `fit/`, `gpx/`, and `tcx/` subdirectories by format.
 It's a hand-crafted 178-byte sample exercising a Connect IQ developer field (`doughnuts_earned`).
 Its `record` messages have no `timestamp` field.
 
-## Generated FIT files
-
-`gen-*.fit` are produced by `fit/generate_fixtures.py` using the official `garmin-fit-sdk` `Encoder` (a dev-only dependency).
-Each targets one guard in `parse_fit_file.parse_fit_frames` that isn't exercised by the vendored real-device files.
-Regenerate with `uv run python tests/files/fit/generate_fixtures.py`.
-Output is deterministic.
-
 ## Hand-written GPX & TCX files
 
 Minimal XML fixtures written for this test suite, with round-number values chosen so tests can assert exact parsed output.

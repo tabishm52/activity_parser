@@ -1,22 +1,14 @@
-"""Regenerates the gen-*.fit fixtures using the official garmin-fit-sdk Encoder.
+"""Synthetic FIT byte builders for testing.
 
-Each fixture targets one guard in parse_fit_file.parse_fit_frames that the vendored
-real-device fixtures never exercise. Run with:
-
-    uv run python tests/files/fit/generate_fixtures.py
-
-Output is deterministic, so a re-run should produce byte-identical files.
+Each function encodes a tiny FIT message stream via the garmin-fit-sdk Encoder.
 """
 
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 from typing import Any
 
 from garmin_fit_sdk import Encoder
-
-FILES = Path(__file__).parent
 
 FILE_ID_MESG_NUM = 0
 SESSION_MESG_NUM = 18
@@ -39,39 +31,31 @@ def encode(messages: list[dict[str, Any]]) -> bytes:
     return encoder.close()
 
 
-def write(name: str, messages: list[dict[str, Any]]) -> None:
-    """Encodes `messages` and writes them to `name` in this directory."""
-    (FILES / name).write_bytes(encode(messages))
-
-
-def generate_dup_timestamps() -> None:
+def dup_timestamps() -> bytes:
     """Two records sharing the same timestamp."""
-    write(
-        "gen-dup-timestamps.fit",
+    return encode(
         [
             {"mesg_num": RECORD_MESG_NUM, "timestamp": at(0), "heart_rate": 100},
             {"mesg_num": RECORD_MESG_NUM, "timestamp": at(0), "heart_rate": 999},
             {"mesg_num": RECORD_MESG_NUM, "timestamp": at(1), "heart_rate": 101},
-        ],
+        ]
     )
 
 
-def generate_missing_timestamp() -> None:
+def missing_timestamp() -> bytes:
     """A record with no timestamp field at all."""
-    write(
-        "gen-missing-timestamp.fit",
+    return encode(
         [
             {"mesg_num": RECORD_MESG_NUM, "timestamp": at(0), "heart_rate": 100},
             {"mesg_num": RECORD_MESG_NUM, "heart_rate": 999},
             {"mesg_num": RECORD_MESG_NUM, "timestamp": at(1), "heart_rate": 101},
-        ],
+        ]
     )
 
 
-def generate_laps_only() -> None:
+def laps_only() -> bytes:
     """A manually-logged workout: lap/session/file_id summary data, zero records."""
-    write(
-        "gen-laps-only.fit",
+    return encode(
         [
             {
                 "mesg_num": FILE_ID_MESG_NUM,
@@ -101,14 +85,13 @@ def generate_laps_only() -> None:
                 "total_elapsed_time": 150.0,
                 "total_distance": 1500.0,
             },
-        ],
+        ]
     )
 
 
-def generate_multi_session() -> None:
+def multi_session() -> bytes:
     """Two file_id messages and two session messages."""
-    write(
-        "gen-multi-session.fit",
+    return encode(
         [
             {
                 "mesg_num": FILE_ID_MESG_NUM,
@@ -138,18 +121,17 @@ def generate_multi_session() -> None:
                 "sport": "cycling",
                 "total_elapsed_time": 60.0,
             },
-        ],
+        ]
     )
 
 
-def generate_left_right_balance() -> None:
+def left_right_balance() -> bytes:
     """Records and a lap carrying left_right_balance, both flag states.
 
     left_right_balance is a bit-packed byte: 0x80 flags the right side, and
     the low 7 bits are that side's percentage contribution.
     """
-    write(
-        "gen-left-right-balance.fit",
+    return encode(
         [
             {
                 "mesg_num": RECORD_MESG_NUM,
@@ -172,19 +154,18 @@ def generate_left_right_balance() -> None:
                 "total_elapsed_time": 1.0,
                 "left_right_balance": 180,
             },
-        ],
+        ]
     )
 
 
-def generate_coercion_skip() -> None:
+def coercion_skip() -> bytes:
     """A record field that decodes to a tuple in one row, a scalar in others.
 
     left_power_phase is an array field; a row with two values decodes to a
     tuple rather than a scalar. temperature is included alongside it with a
     genuinely missing value in one row.
     """
-    write(
-        "gen-coercion-skip.fit",
+    return encode(
         [
             {
                 "mesg_num": RECORD_MESG_NUM,
@@ -206,19 +187,5 @@ def generate_coercion_skip() -> None:
                 "temperature": 21,
                 "left_power_phase": 30,
             },
-        ],
+        ]
     )
-
-
-def main() -> None:
-    """Regenerates every gen-*.fit fixture."""
-    generate_dup_timestamps()
-    generate_missing_timestamp()
-    generate_laps_only()
-    generate_multi_session()
-    generate_left_right_balance()
-    generate_coercion_skip()
-
-
-if __name__ == "__main__":
-    main()
