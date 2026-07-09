@@ -14,6 +14,7 @@ import pandas as pd
 from lxml import etree
 
 from .output import Activity
+from .postprocess import index_by_time
 from .xml_fields import (
     GPX_TRACKPOINT_FIELDS,
     TCX_LAP_FIELDS,
@@ -162,15 +163,6 @@ def build_dataframe(
     return df
 
 
-def _index_by_time(records: pd.DataFrame) -> pd.DataFrame:
-    """Sets ``time`` as the index, dropping rows with no timestamp or a duplicate one."""
-    if "time" not in records.columns:
-        records["time"] = pd.NaT
-    records = records.set_index("time")
-    records = records[records.index.notna()]
-    return records[~records.index.duplicated()]
-
-
 def parse_tcx(
     file: str | PathLike[str] | IO[str] | IO[bytes],
     strict_xml: bool = False,
@@ -198,7 +190,7 @@ def parse_tcx(
     root = etree.parse(file, parser).getroot()
 
     records = build_dataframe(root.iter("{*}Trackpoint"), TCX_TRACKPOINT_FIELDS)
-    records = _index_by_time(records)
+    records = index_by_time(records, "time")
 
     # Strip Track/Trackpoint first: each Lap's walk is recursive, so without this its
     # nested Trackpoint fields would be misattributed as unrecognized Lap-level columns.
@@ -238,7 +230,7 @@ def parse_gpx(
     root = etree.parse(file, parser).getroot()
 
     records = build_dataframe(root.iter("{*}trkpt"), GPX_TRACKPOINT_FIELDS)
-    records = _index_by_time(records)
+    records = index_by_time(records, "time")
 
     activity = gpx_activity(root)
 

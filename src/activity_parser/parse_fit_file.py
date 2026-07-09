@@ -12,6 +12,7 @@ import fitdecode
 import pandas as pd
 
 from .output import Activity
+from .postprocess import coerce_numeric_all_or_nothing, index_by_time
 
 if TYPE_CHECKING:
     from _typeshed import SupportsRead
@@ -165,21 +166,10 @@ def parse_fit_frames(
     records = pd.DataFrame(records_rows)
 
     # None-valued fields cause object dtype; coerce numeric columns to float64.
-    for col in records.select_dtypes(include="object").columns:
-        coerced = pd.to_numeric(records[col], errors="coerce")
-        if coerced.notna().sum() == records[col].notna().sum():
-            records[col] = coerced
+    for col in records.select_dtypes(include=["object", "str"]).columns:
+        records[col] = coerce_numeric_all_or_nothing(records[col])
 
-    # FIT files occasionally have duplicate timestamps.
-    if "timestamp" in records.columns:
-        records = records.set_index("timestamp")
-    elif records.empty:
-        records.index = pd.DatetimeIndex([], name="timestamp")
-    else:
-        records.index = pd.Index(records.index, name="timestamp")
-
-    records = records[records.index.notna()]
-    records = records[~records.index.duplicated()]
+    records = index_by_time(records, "timestamp")
 
     records = coalesce_enhanced_columns(records, FIT_RECORDS_ENHANCED_PAIRS)
     records = add_fractional_columns(records, FIT_RECORDS_FRACTIONAL_PAIRS)
