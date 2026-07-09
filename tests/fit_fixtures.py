@@ -128,8 +128,10 @@ def multi_session() -> bytes:
 def left_right_balance() -> bytes:
     """Records and a lap carrying left_right_balance, both flag states.
 
-    left_right_balance is a bit-packed byte: 0x80 flags the right side, and
-    the low 7 bits are that side's percentage contribution.
+    Per-record left_right_balance is a bit-packed byte: 0x80 flags the right
+    side, and the low 7 bits are that side's percentage contribution. The
+    lap-level field is the higher-precision uint16 variant (0x8000 flag,
+    0x3FFF mask, percentage x100).
     """
     return encode(
         [
@@ -152,7 +154,34 @@ def left_right_balance() -> bytes:
                 "timestamp": at(1),
                 "start_time": T0,
                 "total_elapsed_time": 1.0,
-                "left_right_balance": 180,
+                "left_right_balance": 37968,  # 0x8000 | 5200 -> right=52, left=48
+            },
+        ]
+    )
+
+
+def left_right_balance_enum_quirk() -> bytes:
+    """Records whose left_right_balance byte matches fitdecode's own enum keys.
+
+    fitdecode renders raw byte 0x80 as "right" and 0x7F as "mask" instead of
+    an int (profile quirk), unlike every other byte value.
+    """
+    return encode(
+        [
+            {
+                "mesg_num": RECORD_MESG_NUM,
+                "timestamp": at(0),
+                "left_right_balance": 128,  # decodes to "right"
+            },
+            {
+                "mesg_num": RECORD_MESG_NUM,
+                "timestamp": at(1),
+                "left_right_balance": 127,  # decodes to "mask"
+            },
+            {
+                "mesg_num": RECORD_MESG_NUM,
+                "timestamp": at(2),
+                "left_right_balance": 180,  # decodes to a plain int, unaffected
             },
         ]
     )

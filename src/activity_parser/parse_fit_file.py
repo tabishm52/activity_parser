@@ -41,10 +41,14 @@ FIT_LAPS_FRACTIONAL_PAIRS: dict[str, str] = {
     "max_cadence": "max_fractional_cadence",
 }
 
-# left_right_balance is a bit-packed byte: bit 0x80 flags the right side, and the
-# remaining 7 bits (0x7F) are that side's percentage contribution directly (0-100)
+# left_right_balance is bit-packed: one bit flags the right side, the rest is that
+# side's percentage. Per-record is uint8 (0x80/0x7F); lap/session/segment_lap
+# aggregates use a higher-precision uint16 (0x8000/0x3FFF, percentage x100).
+LEFT_RIGHT_BALANCE_COLUMN = "left_right_balance"
 LEFT_RIGHT_BALANCE_RIGHT_FLAG = 0x80
 LEFT_RIGHT_BALANCE_PERCENT_MASK = 0x7F
+LEFT_RIGHT_BALANCE_RIGHT_FLAG_100 = 0x8000
+LEFT_RIGHT_BALANCE_PERCENT_MASK_100 = 0x3FFF
 
 
 def coalesce_enhanced_columns(df: pd.DataFrame, pairs: Mapping[str, str]) -> pd.DataFrame:
@@ -67,16 +71,25 @@ def add_fractional_columns(df: pd.DataFrame, pairs: Mapping[str, str]) -> pd.Dat
     return df
 
 
-def split_left_right_balance(df: pd.DataFrame, column: str = "left_right_balance") -> pd.DataFrame:
-    """Splits FIT's bit-packed left_right_balance byte into left_balance/right_balance."""
-    if column not in df.columns:
+def split_left_right_balance(
+    df: pd.DataFrame,
+    right_flag: int,
+    percent_mask: int,
+    percent_scale: float,
+) -> pd.DataFrame:
+    """Adds left_balance/right_balance decoded from left_right_balance."""
+    if LEFT_RIGHT_BALANCE_COLUMN not in df.columns:
         return df
-    df = df.copy()
-    raw = df.pop(column)
+
+    # fitdecode has a bug that renders right_flag/percent_mask as "right"/"mask"
+    # strings instead of ints; map them back before casting.
+    raw = df[LEFT_RIGHT_BALANCE_COLUMN].replace({"right": right_flag, "mask": percent_mask})
     present = raw.dropna().astype(int)
-    is_right = (present & LEFT_RIGHT_BALANCE_RIGHT_FLAG) != 0
-    percent = (present & LEFT_RIGHT_BALANCE_PERCENT_MASK).astype(float)
+    is_right = (present & right_flag) != 0
+    percent = (present & percent_mask).astype(float) / percent_scale
     right = percent.where(is_right, 100 - percent)
+
+    df = df.copy()
     df["left_balance"] = (100 - right).reindex(df.index)
     df["right_balance"] = right.reindex(df.index)
     return df
@@ -170,13 +183,23 @@ def parse_fit_frames(
 
     records = coalesce_enhanced_columns(records, FIT_RECORDS_ENHANCED_PAIRS)
     records = add_fractional_columns(records, FIT_RECORDS_FRACTIONAL_PAIRS)
-    records = split_left_right_balance(records)
+    records = split_left_right_balance(
+        records,
+        right_flag=LEFT_RIGHT_BALANCE_RIGHT_FLAG,
+        percent_mask=LEFT_RIGHT_BALANCE_PERCENT_MASK,
+        percent_scale=1.0,
+    )
     records = records.rename(columns=FIT_RECORD_RENAME)
 
     laps = pd.DataFrame(laps_rows)
     laps = coalesce_enhanced_columns(laps, FIT_LAPS_ENHANCED_PAIRS)
     laps = add_fractional_columns(laps, FIT_LAPS_FRACTIONAL_PAIRS)
-    laps = split_left_right_balance(laps)
+    laps = split_left_right_balance(
+        laps,
+        right_flag=LEFT_RIGHT_BALANCE_RIGHT_FLAG_100,
+        percent_mask=LEFT_RIGHT_BALANCE_PERCENT_MASK_100,
+        percent_scale=100.0,
+    )
 
     activity = build_activity(session, file_id)
 
