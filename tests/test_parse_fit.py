@@ -12,6 +12,10 @@ import pytest
 
 from activity_parser import ActivityParser
 from activity_parser.parse_fit_file import (
+    LEFT_RIGHT_BALANCE_PERCENT_MASK,
+    LEFT_RIGHT_BALANCE_PERCENT_MASK_100,
+    LEFT_RIGHT_BALANCE_RIGHT_FLAG,
+    LEFT_RIGHT_BALANCE_RIGHT_FLAG_100,
     add_fractional_columns,
     build_activity,
     coalesce_enhanced_columns,
@@ -210,34 +214,66 @@ def test_add_fractional_columns_noop_without_fractional_column():
     assert "fractional_cadence" not in out.columns
 
 
+def split_record_balance(df: pd.DataFrame) -> pd.DataFrame:
+    """split_left_right_balance with the per-record (uint8) layout."""
+    return split_left_right_balance(
+        df,
+        right_flag=LEFT_RIGHT_BALANCE_RIGHT_FLAG,
+        percent_mask=LEFT_RIGHT_BALANCE_PERCENT_MASK,
+        percent_scale=1.0,
+    )
+
+
 def test_split_left_right_balance_decodes_right_flag():
     # 180 = 0x80 | 52: right flag set, 52% -> right leg contributes 52%.
     df = pd.DataFrame({"left_right_balance": [180]})
-    out = split_left_right_balance(df)
+    out = split_record_balance(df)
     assert out["right_balance"].tolist() == pytest.approx([52.0])
     assert out["left_balance"].tolist() == pytest.approx([48.0])
-    assert "left_right_balance" not in out.columns
+    assert out["left_right_balance"].tolist() == [180]
 
 
 def test_split_left_right_balance_decodes_left_flag():
     # 52 = no flag: left leg contributes 52%.
     df = pd.DataFrame({"left_right_balance": [52]})
-    out = split_left_right_balance(df)
+    out = split_record_balance(df)
     assert out["left_balance"].tolist() == pytest.approx([52.0])
     assert out["right_balance"].tolist() == pytest.approx([48.0])
 
 
 def test_split_left_right_balance_preserves_missing_values():
     df = pd.DataFrame({"left_right_balance": [180, None]})
-    out = split_left_right_balance(df)
+    out = split_record_balance(df)
     assert out["right_balance"].iloc[1] != out["right_balance"].iloc[1]  # NaN
 
 
 def test_split_left_right_balance_noop_without_column():
     df = pd.DataFrame({"cadence": [90.0]})
-    out = split_left_right_balance(df)
+    out = split_record_balance(df)
     assert "left_balance" not in out.columns
     assert "right_balance" not in out.columns
+
+
+def test_split_left_right_balance_decodes_enum_quirk_values():
+    # fitdecode renders raw byte 0x80/0x7F as "right"/"mask" strings (profile quirk);
+    # confirm both are recovered rather than crashing.
+    df = pd.DataFrame({"left_right_balance": ["right", "mask", 180]})
+    out = split_record_balance(df)
+    assert out["right_balance"].tolist() == pytest.approx([0.0, -27.0, 52.0])
+    assert out["left_balance"].tolist() == pytest.approx([100.0, 127.0, 48.0])
+
+
+def test_split_left_right_balance_decodes_enum_quirk_values_100_variant():
+    # Same fitdecode quirk, but for the lap/session/segment_lap uint16 layout.
+    df = pd.DataFrame({"left_right_balance": ["right", "mask", 37968]})
+    out = split_left_right_balance(
+        df,
+        right_flag=LEFT_RIGHT_BALANCE_RIGHT_FLAG_100,
+        percent_mask=LEFT_RIGHT_BALANCE_PERCENT_MASK_100,
+        percent_scale=100.0,
+    )
+    assert out["right_balance"].tolist() == pytest.approx([0.0, -63.83, 52.0])
+    assert out["left_balance"].tolist() == pytest.approx([100.0, 163.83, 48.0])
 
 
 def test_gz_round_trip(tmp_path):
@@ -337,12 +373,32 @@ def test_parse_fit_chained_files(tmp_path):
 
 
 def test_parse_fit_left_right_balance_end_to_end():
+    # parse_fit is the low-level entry point: left_right_balance is kept alongside the
+    # decoded columns. ActivityParser's curated column selection is what drops it.
     records, laps, _ = parse_fit(io.BytesIO(fit_fixtures.left_right_balance()))
     assert records["left_balance"].tolist() == pytest.approx([48.0, 52.0])
     assert records["right_balance"].tolist() == pytest.approx([52.0, 48.0])
-    assert "left_right_balance" not in records.columns
+    assert records["left_right_balance"].tolist() == [180, 52]
     assert laps["left_balance"].tolist() == pytest.approx([48.0])
     assert laps["right_balance"].tolist() == pytest.approx([52.0])
+    assert laps["left_right_balance"].tolist() == [37968]
+
+
+def test_activity_parser_left_right_balance_column_curation():
+    src = io.BytesIO(fit_fixtures.left_right_balance())
+    curated, _, _ = ActivityParser().parse(src, ext="fit")
+    assert "left_right_balance" not in curated.columns
+
+    src.seek(0)
+    everything, _, _ = ActivityParser(include_all_columns=True).parse(src, ext="fit")
+    assert "left_right_balance" in everything.columns
+
+
+def test_parse_fit_left_right_balance_enum_quirk_end_to_end():
+    # Regression test: this used to crash ~12.7% of a real archive's FIT files.
+    records, _, _ = parse_fit(io.BytesIO(fit_fixtures.left_right_balance_enum_quirk()))
+    assert records["right_balance"].tolist() == pytest.approx([0.0, -27.0, 52.0])
+    assert records["left_balance"].tolist() == pytest.approx([100.0, 127.0, 48.0])
 
 
 def test_parse_fit_coercion_skips_column_with_non_numeric_value():
