@@ -18,6 +18,8 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from .postprocess import coerce_numeric_all_or_nothing
+
 XSI_NS = "http://www.w3.org/2001/XMLSchema-instance"
 TCX_NS = "http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2"
 AEXT_NS = "http://www.garmin.com/xmlschemas/ActivityExtension/v2"
@@ -45,17 +47,10 @@ def _numeric_scale(factor: float) -> Converter:
     """Builds a converter: all-or-nothing numeric coercion, then scale by ``factor``."""
 
     def convert(values: pd.Series) -> pd.Series:
-        non_null = values.notna().sum()
-        if non_null == 0:
-            return values
-
-        numeric_values = pd.to_numeric(values, errors="coerce")
-        if numeric_values.notna().sum() != non_null:
-            # Some values genuinely aren't numeric; leave the column as raw strings
-            # rather than partially coercing it.
-            return values
-
-        return numeric_values * factor
+        coerced = coerce_numeric_all_or_nothing(values)
+        if not pd.api.types.is_numeric_dtype(coerced):
+            return coerced
+        return coerced * factor
 
     return convert
 

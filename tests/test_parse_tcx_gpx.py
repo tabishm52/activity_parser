@@ -19,6 +19,7 @@ NO_POSITION_TCX = TCX_FILES / "no_position.tcx"
 MULTI_SEGMENT_GPX = GPX_FILES / "multi_segment.gpx"
 NO_TIME_TCX = TCX_FILES / "no_time.tcx"
 NO_TIME_GPX = GPX_FILES / "no_time.gpx"
+ROUTE_NO_TIME_GPX = GPX_FILES / "route_no_time.gpx"
 MIXED_OFFSET_TCX = TCX_FILES / "mixed_offset.tcx"
 MIXED_OFFSET_GPX = GPX_FILES / "mixed_offset.gpx"
 BAD_SPEED_GPX = GPX_FILES / "bad_speed.gpx"
@@ -233,6 +234,14 @@ def test_gpx_no_time_rows_dropped():
     records, _, _ = ActivityParser().parse(NO_TIME_GPX)
     assert len(records) == 2
     assert records["heart_rate"].tolist() == [100, 101]
+
+
+def test_gpx_route_with_no_time_anywhere_keeps_all_rows():
+    # A planned route (no <time> on any trackpoint, legal per the GPX schema) should
+    # keep its points rather than being dropped entirely like the partial-missing case.
+    records, _, _ = ActivityParser().parse(ROUTE_NO_TIME_GPX)
+    assert len(records) == 3
+    assert records["altitude"].tolist() == pytest.approx([10.0, 11.0, 12.0])
 
 
 def test_gpx_non_numeric_speed_passed_through():
