@@ -51,7 +51,7 @@ time
 A few notes on column handling:
 
 - Column names and units are standardized across source formats for known field types.
-- Unknown fields are omitted by default; customize this (or which columns are selected) via `record_columns`/`lap_columns`/`include_all_columns` on `ActivityParser` — see its docstring for details.
+- Unknown fields are omitted by default; customize columns via `record_columns`, `lap_columns`, and `include_all_columns` on `ActivityParser` — see its docstring for details.
 - Not every column appears in every file: `parse()` only includes columns actually present.
 
 ### Records
@@ -68,9 +68,9 @@ Fields marked with (\*) are exporter-dependent.
 | `cadence` | rpm | Yes | Yes | (\*) |
 | `heart_rate` | bpm | Yes | Yes | (\*) |
 | `power` | watts | Yes | (\*) | (\*) |
-| `temperature` | °C | Yes | — | (\*) |
 | `left_balance`, `right_balance` | percent | Yes | — | — |
 | `accumulated_power` | watts | Yes | — | — |
+| `temperature` | °C | Yes | — | (\*) |
 | `water_temperature` | °C | — | — | (\*) |
 | `depth` | meters | — | — | (\*) |
 | `course`, `bearing` | degrees | — | — | (\*) |
@@ -127,7 +127,7 @@ Values are transcribed from the file, never computed/derived from records or lap
 
 (\*) GPX's `start_time` comes from `metadata/time`, which is technically the file's export time rather than the activity's start.
 
-## Source format notes
+## Parser notes
 
 ### FIT files
 
