@@ -20,6 +20,7 @@ from activity_parser.parse_fit_file import (
     build_activity,
     coalesce_enhanced_columns,
     parse_fit,
+    parse_fit_raw,
     split_left_right_balance,
 )
 
@@ -516,3 +517,27 @@ def test_build_activity_reads_session_fields():
     assert activity.max_heart_rate == 112
     assert activity.avg_speed == 9.9
     assert activity.max_speed == 13.1
+
+
+# ---------------------------------------------------------------------------
+# parse_fit_raw: unprocessed, per-message-type dict of DataFrames
+# ---------------------------------------------------------------------------
+
+
+def test_parse_fit_raw_groups_by_message_type():
+    raw = parse_fit_raw(EDGE_820)
+    assert len(raw["record"]) == 15
+    assert len(raw["lap"]) == 1
+
+
+def test_parse_fit_raw_omits_absent_message_types():
+    raw = parse_fit_raw(io.BytesIO(fit_fixtures.laps_only()))
+    assert "record" not in raw
+    assert len(raw["file_id"]) == 1
+    assert len(raw["session"]) == 1
+    assert len(raw["lap"]) == 2
+
+
+def test_parse_fit_raw_no_records_returns_empty_dict():
+    raw = parse_fit_raw(io.BytesIO(empty_fit_bytes()))
+    assert raw == {}
