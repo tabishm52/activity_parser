@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import gzip
-from collections.abc import Iterator, Mapping
+from collections import defaultdict
+from collections.abc import Generator, Iterator, Mapping
 from os import PathLike
 from pathlib import Path
 from typing import IO, TYPE_CHECKING, Any
@@ -142,26 +144,61 @@ def build_activity(session: dict[str, Any] | None, file_id: dict[str, Any] | Non
     )
 
 
-def parse_fit_frames(
-    fit_file: SupportsRead[bytes],
+@contextlib.contextmanager
+def open_fit_file(
+    file: str | PathLike[str] | IO[bytes],
+) -> Generator[SupportsRead[bytes], None, None]:
+    """Opens a FIT path (auto-unzipping ``.gz``) or passes through a file-like object."""
+    if isinstance(file, (str, PathLike)):
+        ext = Path(file).suffix
+        opener = gzip.open if ext.lower() == ".gz" else open
+        with opener(file, "rb") as fit_file:
+            yield fit_file
+    else:
+        yield file
+
+
+def parse_fit(
+    file: str | PathLike[str] | IO[bytes],
     check_crc: bool = False,
 ) -> tuple[pd.DataFrame, pd.DataFrame, Activity]:
-    """Parse FIT frames from an open file object."""
+    """Loads a FIT activity into Pandas DataFrames.
+
+    Known message types and fields are converted to typed, canonically-named columns.
+    Unknown message types and fields are returned under fitdecode's ``unknown_<num>``
+    names. The ``session`` and ``file_id`` messages are summarized into the returned
+    ``Activity``; all other message types (``device_info``, proprietary ``unknown_<n>``
+    messages, etc.) are discarded.
+
+    Assumes that the FIT file is all one activity, i.e. chained FIT files will be
+    merged into one set of return values. If a file has more than one ``session`` or
+    ``file_id`` message, only the first of each is used.
+
+    Args:
+        file: File-like or path-like object. A path-like argument ending in ``.gz`` will
+            be unzipped before processing.
+        check_crc: If True, raises ``fitdecode.FitCRCError`` on a CRC mismatch in the
+            FIT file. If False, CRC verification is skipped.
+
+    Returns:
+        Tuple containing records, laps, and an ``Activity`` summary.
+    """
     records_rows: list[dict[str, Any]] = []
     laps_rows: list[dict[str, Any]] = []
     session: dict[str, Any] | None = None
     file_id: dict[str, Any] | None = None
 
-    for frame in copy_fit_frames(fit_file, check_crc=check_crc):
-        row = frame_to_dict(frame)
-        if frame.name == "record":
-            records_rows.append(row)
-        elif frame.name == "lap":
-            laps_rows.append(row)
-        elif frame.name == "session" and session is None:
-            session = row
-        elif frame.name == "file_id" and file_id is None:
-            file_id = row
+    with open_fit_file(file) as fit_file:
+        for frame in copy_fit_frames(fit_file, check_crc=check_crc):
+            row = frame_to_dict(frame)
+            if frame.name == "record":
+                records_rows.append(row)
+            elif frame.name == "lap":
+                laps_rows.append(row)
+            elif frame.name == "session" and session is None:
+                session = row
+            elif frame.name == "file_id" and file_id is None:
+                file_id = row
 
     records = pd.DataFrame(records_rows)
 
@@ -196,21 +233,19 @@ def parse_fit_frames(
     return records, laps, activity
 
 
-def parse_fit(
+def parse_fit_raw(
     file: str | PathLike[str] | IO[bytes],
     check_crc: bool = False,
-) -> tuple[pd.DataFrame, pd.DataFrame, Activity]:
-    """Loads a FIT activity into Pandas DataFrames.
+) -> dict[str, pd.DataFrame]:
+    """Loads every message type in a FIT file into its own raw Pandas DataFrame.
 
-    Known message types and fields are converted to typed, canonically-named columns.
-    Unknown message types and fields are returned under fitdecode's ``unknown_<num>``
-    names. The ``session`` and ``file_id`` messages are summarized into the returned
-    ``Activity``; all other message types (``device_info``, proprietary ``unknown_<n>``
-    messages, etc.) are discarded.
+    Returns one DataFrame per FIT message type present in the file (e.g. ``record``,
+    ``lap``, ``session``, ``device_info``, ...) with no renaming or other processing
+    besides fitdecode's ``StandardUnitsDataProcessor`` unit conversions.
 
-    Assumes that the FIT file is all one activity, i.e. chained FIT files will be
-    merged into one set of return values. If a file has more than one ``session`` or
-    ``file_id`` message, only the first of each is used.
+    Message types fitdecode can't resolve against the FIT profile are keyed under its
+    ``unknown_<n>`` names. Chained FIT files have same-named messages merged across
+    the chain.
 
     Args:
         file: File-like or path-like object. A path-like argument ending in ``.gz`` will
@@ -219,16 +254,13 @@ def parse_fit(
             FIT file. If False, CRC verification is skipped.
 
     Returns:
-        Tuple containing records, laps, and an ``Activity`` summary.
+        Dict mapping FIT message type name to its raw DataFrame. A message type absent
+        from the file is absent from the dict.
     """
-    is_path = isinstance(file, (str, PathLike))
+    rows_by_type: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
-    if is_path:
-        ext = Path(file).suffix
-        opener = gzip.open if ext.lower() == ".gz" else open
-        with opener(file, "rb") as fit_file:
-            records, laps, activity = parse_fit_frames(fit_file, check_crc=check_crc)
-    else:
-        records, laps, activity = parse_fit_frames(file, check_crc=check_crc)
+    with open_fit_file(file) as fit_file:
+        for frame in copy_fit_frames(fit_file, check_crc=check_crc):
+            rows_by_type[frame.name].append(frame_to_dict(frame))
 
-    return records, laps, activity
+    return {name: pd.DataFrame(rows) for name, rows in rows_by_type.items()}
