@@ -22,15 +22,16 @@ Create a new instance of the `ActivityParser` class to be reused for subsequent 
 
 ```python
 import activity_parser
+
 parser = activity_parser.ActivityParser()
 ```
 
 Parse FIT, TCX and GPX files into normalized DataFrames:
 
 ```python
-records, laps, activity = parser.parse('path/to/fit_file.fit')
-records, laps, activity = parser.parse('path/to/gpx_file.gpx')
-records, laps, activity = parser.parse('path/to/tcx_file.tcx')
+records, laps, activity = parser.parse("path/to/fit_file.fit")
+records, laps, activity = parser.parse("path/to/gpx_file.gpx")
+records, laps, activity = parser.parse("path/to/tcx_file.tcx")
 ```
 
 Each file is assumed to contain a single activity.
