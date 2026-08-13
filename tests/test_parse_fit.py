@@ -5,10 +5,10 @@ import io
 import struct
 from pathlib import Path
 
-import fit_fixtures
 import fitdecode
 import pandas as pd
 import pytest
+import synthetic_fit
 
 from activity_parser import ActivityParser
 from activity_parser.parse_fit_file import (
@@ -325,23 +325,23 @@ def test_parse_fit_no_records_yields_empty_datetime_index():
 
 
 # ---------------------------------------------------------------------------
-# Guards and seams: synthetic fixtures built by fit_fixtures.py
+# Guards and seams: synthetic fixtures built by synthetic_fit.py
 # ---------------------------------------------------------------------------
 
 
 def test_parse_fit_drops_duplicate_timestamp_keeping_first():
-    records, _, _ = parse_fit(io.BytesIO(fit_fixtures.dup_timestamps()))
+    records, _, _ = parse_fit(io.BytesIO(synthetic_fit.dup_timestamps()))
     assert records.index.is_unique
     assert records["heart_rate"].tolist() == [100, 101]
 
 
 def test_parse_fit_drops_record_with_no_timestamp():
-    records, _, _ = parse_fit(io.BytesIO(fit_fixtures.missing_timestamp()))
+    records, _, _ = parse_fit(io.BytesIO(synthetic_fit.missing_timestamp()))
     assert records["heart_rate"].tolist() == [100, 101]
 
 
 def test_parse_fit_laps_only_fixture():
-    records, laps, activity = parse_fit(io.BytesIO(fit_fixtures.laps_only()))
+    records, laps, activity = parse_fit(io.BytesIO(synthetic_fit.laps_only()))
     assert records.empty
     assert isinstance(records.index, pd.DatetimeIndex)
     assert laps["total_distance"].tolist() == pytest.approx([1.0, 1.5])
@@ -354,7 +354,7 @@ def test_parse_fit_laps_only_fixture():
 def test_parse_fit_multi_session_uses_first_session_and_file_id():
     # Docstring contract: with more than one session/file_id message, only the first
     # of each is used.
-    _, _, activity = parse_fit(io.BytesIO(fit_fixtures.multi_session()))
+    _, _, activity = parse_fit(io.BytesIO(synthetic_fit.multi_session()))
     assert activity.sport == "running"
     assert activity.total_elapsed_time == 60.0
     assert activity.creator == "garmin 1111"
@@ -376,7 +376,7 @@ def test_parse_fit_chained_files(tmp_path):
 def test_parse_fit_left_right_balance_end_to_end():
     # parse_fit is the low-level entry point: left_right_balance is kept alongside the
     # decoded columns. ActivityParser's curated column selection is what drops it.
-    records, laps, _ = parse_fit(io.BytesIO(fit_fixtures.left_right_balance()))
+    records, laps, _ = parse_fit(io.BytesIO(synthetic_fit.left_right_balance()))
     assert records["left_balance"].tolist() == pytest.approx([48.0, 52.0])
     assert records["right_balance"].tolist() == pytest.approx([52.0, 48.0])
     assert records["left_right_balance"].tolist() == [180, 52]
@@ -386,7 +386,7 @@ def test_parse_fit_left_right_balance_end_to_end():
 
 
 def test_activity_parser_left_right_balance_column_curation():
-    src = io.BytesIO(fit_fixtures.left_right_balance())
+    src = io.BytesIO(synthetic_fit.left_right_balance())
     curated, _, _ = ActivityParser().parse(src, ext="fit")
     assert "left_right_balance" not in curated.columns
 
@@ -397,7 +397,7 @@ def test_activity_parser_left_right_balance_column_curation():
 
 def test_parse_fit_left_right_balance_enum_quirk_end_to_end():
     # Regression test: this used to crash ~12.7% of a real archive's FIT files.
-    records, _, _ = parse_fit(io.BytesIO(fit_fixtures.left_right_balance_enum_quirk()))
+    records, _, _ = parse_fit(io.BytesIO(synthetic_fit.left_right_balance_enum_quirk()))
     assert records["right_balance"].tolist() == pytest.approx([0.0, -27.0, 52.0])
     assert records["left_balance"].tolist() == pytest.approx([100.0, 127.0, 48.0])
 
@@ -407,7 +407,7 @@ def test_parse_fit_coercion_skips_column_with_non_numeric_value():
     # tuple), making the column object-dtype and un-coercible as a whole, so it must
     # pass through unchanged while a sibling column with only a genuinely missing
     # value still coerces to float64.
-    records, _, _ = parse_fit(io.BytesIO(fit_fixtures.coercion_skip()))
+    records, _, _ = parse_fit(io.BytesIO(synthetic_fit.coercion_skip()))
     assert records["left_power_phase"].tolist() == [
         pytest.approx(9.84375),
         (pytest.approx(9.84375), pytest.approx(19.6875)),
@@ -531,7 +531,7 @@ def test_parse_fit_raw_groups_by_message_type():
 
 
 def test_parse_fit_raw_omits_absent_message_types():
-    raw = parse_fit_raw(io.BytesIO(fit_fixtures.laps_only()))
+    raw = parse_fit_raw(io.BytesIO(synthetic_fit.laps_only()))
     assert "record" not in raw
     assert len(raw["file_id"]) == 1
     assert len(raw["session"]) == 1
