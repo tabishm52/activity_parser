@@ -13,6 +13,7 @@ from typing import IO, TYPE_CHECKING, Any
 import fitdecode
 import pandas as pd
 
+from .exceptions import FitError
 from .output import Activity
 from .postprocess import coerce_numeric_all_or_nothing, index_by_time
 
@@ -105,9 +106,12 @@ def copy_fit_frames(
     """Yields FIT data frames from a file-like object."""
     processor = fitdecode.StandardUnitsDataProcessor()
     crc_mode = fitdecode.CrcCheck.RAISE if check_crc else fitdecode.CrcCheck.DISABLED
-    for frame in fitdecode.FitReader(fit_file, processor=processor, check_crc=crc_mode):
-        if isinstance(frame, fitdecode.FitDataMessage):
-            yield frame
+    try:
+        for frame in fitdecode.FitReader(fit_file, processor=processor, check_crc=crc_mode):
+            if isinstance(frame, fitdecode.FitDataMessage):
+                yield frame
+    except fitdecode.FitError as e:
+        raise FitError(str(e)) from e
 
 
 def frame_to_dict(frame: fitdecode.FitDataMessage) -> dict[str, Any]:
@@ -177,11 +181,15 @@ def parse_fit(
     Args:
         file: File-like or path-like object. A path-like argument ending in ``.gz`` will
             be unzipped before processing.
-        check_crc: If True, raises ``fitdecode.FitCRCError`` on a CRC mismatch in the
-            FIT file. If False, CRC verification is skipped.
+        check_crc: If True, verifies CRC integrity of the FIT file. If False, CRC
+            verification is skipped.
 
     Returns:
         Tuple containing records, laps, and an ``Activity`` summary.
+
+    Raises:
+        FitError: The FIT file fails to decode (e.g. invalid header, or a CRC mismatch
+            when ``check_crc`` is True).
     """
     records_rows: list[dict[str, Any]] = []
     laps_rows: list[dict[str, Any]] = []
@@ -250,12 +258,16 @@ def parse_fit_raw(
     Args:
         file: File-like or path-like object. A path-like argument ending in ``.gz`` will
             be unzipped before processing.
-        check_crc: If True, raises ``fitdecode.FitCRCError`` on a CRC mismatch in the
-            FIT file. If False, CRC verification is skipped.
+        check_crc: If True, verifies CRC integrity of the FIT file. If False, CRC
+            verification is skipped.
 
     Returns:
         Dict mapping FIT message type name to its raw DataFrame. A message type absent
         from the file is absent from the dict.
+
+    Raises:
+        FitError: The FIT file fails to decode (e.g. invalid header, or a CRC mismatch
+            when ``check_crc`` is True).
     """
     rows_by_type: dict[str, list[dict[str, Any]]] = defaultdict(list)
 

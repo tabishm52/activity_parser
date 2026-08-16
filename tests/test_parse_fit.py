@@ -5,12 +5,11 @@ import io
 import struct
 from pathlib import Path
 
-import fitdecode
 import pandas as pd
 import pytest
 import synthetic_fit
 
-from activity_parser import ActivityParser
+from activity_parser import ActivityParser, FitError
 from activity_parser.parse_fit_file import (
     LEFT_RIGHT_BALANCE_PERCENT_MASK,
     LEFT_RIGHT_BALANCE_PERCENT_MASK_100,
@@ -294,7 +293,7 @@ def test_crc_mismatch_recovery(tmp_path):
     data[-1] ^= 0xFF
     corrupt.write_bytes(data)
 
-    with pytest.raises(fitdecode.FitCRCError):
+    with pytest.raises(FitError, match="CRC"):
         ActivityParser(check_crc=True).parse(corrupt)
 
     records, _, _ = ActivityParser().parse(corrupt)
@@ -308,7 +307,7 @@ def test_file_like_input():
 
 
 def test_non_fit_bytes_raise():
-    with pytest.raises(fitdecode.FitHeaderError):
+    with pytest.raises(FitError, match="not a FIT file"):
         parse_fit(io.BytesIO(b"this is not a FIT file"))
 
 

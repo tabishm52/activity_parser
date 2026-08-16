@@ -5,9 +5,8 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
-from lxml import etree
 
-from activity_parser import ActivityParser
+from activity_parser import ActivityParser, XmlError
 from activity_parser.parse_tcx_gpx import parse_gpx, parse_tcx
 
 FILES = Path(__file__).parent / "files"
@@ -334,7 +333,7 @@ def test_malformed_xml_recovery(tmp_path):
     truncated = tmp_path / "truncated.tcx"
     truncated.write_text(SAMPLE_TCX.read_text()[:2500])
 
-    with pytest.raises(etree.XMLSyntaxError):
+    with pytest.raises(XmlError):
         ActivityParser(strict_xml=True).parse(truncated)
 
     records, _, _ = ActivityParser().parse(truncated)
