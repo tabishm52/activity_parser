@@ -13,6 +13,7 @@ from typing import IO, cast
 import pandas as pd
 from lxml import etree
 
+from .exceptions import XmlError
 from .output import Activity
 from .postprocess import index_by_time
 from .xml_fields import (
@@ -26,6 +27,20 @@ from .xml_fields import (
     XmlField,
     to_datetime,
 )
+
+
+def parse_xml_root(
+    file: str | PathLike[str] | IO[str] | IO[bytes], strict_xml: bool
+) -> etree._Element:
+    """Parses ``file`` into an XML root element, raising ``XmlError`` on malformed XML."""
+    parser = etree.XMLParser(recover=not strict_xml)
+    try:
+        root = etree.parse(file, parser).getroot()
+    except etree.XMLSyntaxError as e:
+        raise XmlError(str(e)) from e
+    if root is None:
+        raise XmlError("No parseable XML content found.")
+    return root
 
 
 def remove_elements(root: etree._Element, *tags: str) -> None:
@@ -180,14 +195,17 @@ def parse_tcx(
     Args:
         file: File-like or path-like object. A path-like argument ending in ``.gz`` will
             be transparently unzipped before processing.
-        strict_xml: If True, raises ``lxml.etree.XMLSyntaxError`` on malformed XML. If
-            False, parser recovery is enabled.
+        strict_xml: If True, requires well-formed XML. If False, parser recovery is
+            enabled.
 
     Returns:
         Tuple containing records, laps, and an ``Activity`` summary.
+
+    Raises:
+        XmlError: The file's XML fails to parse (e.g. no XML content at all, or, when
+            ``strict_xml`` is True, malformed XML).
     """
-    parser = etree.XMLParser(recover=not strict_xml)
-    root = etree.parse(file, parser).getroot()
+    root = parse_xml_root(file, strict_xml)
 
     records = build_dataframe(root.iter("{*}Trackpoint"), TCX_TRACKPOINT_FIELDS)
     records = index_by_time(records, "time")
@@ -219,15 +237,18 @@ def parse_gpx(
     Args:
         file: File-like or path-like object. A path-like argument ending in ``.gz`` will
             be transparently unzipped before processing.
-        strict_xml: If True, raises ``lxml.etree.XMLSyntaxError`` on malformed XML. If
-            False, parser recovery is enabled.
+        strict_xml: If True, requires well-formed XML. If False, parser recovery is
+            enabled.
 
     Returns:
         Tuple containing records, laps, and an ``Activity`` summary. Note GPX files
         don't have lap information, so the laps DataFrame will be empty.
+
+    Raises:
+        XmlError: The file's XML fails to parse (e.g. no XML content at all, or, when
+            ``strict_xml`` is True, malformed XML).
     """
-    parser = etree.XMLParser(recover=not strict_xml)
-    root = etree.parse(file, parser).getroot()
+    root = parse_xml_root(file, strict_xml)
 
     records = build_dataframe(root.iter("{*}trkpt"), GPX_TRACKPOINT_FIELDS)
     records = index_by_time(records, "time")

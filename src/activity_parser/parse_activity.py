@@ -78,10 +78,10 @@ class ActivityParser:
             include_all_columns: If True, ``parse`` returns all parsed columns. If
                 False, ``parse`` returns only the columns in ``record_columns`` and
                 ``lap_columns``.
-            check_crc: If True, ``parse`` raises ``fitdecode.FitCRCError`` on a CRC
-                mismatch in FIT files. If False, CRC verification is skipped.
-            strict_xml: If True, ``parse`` raises ``lxml.etree.XMLSyntaxError`` on
-                malformed TCX/GPX XML. If False, parser recovery is enabled.
+            check_crc: If True, ``parse`` verifies CRC integrity of FIT files. If
+                False, CRC verification is skipped.
+            strict_xml: If True, ``parse`` requires well-formed TCX/GPX XML. If False,
+                parser recovery is enabled.
         """
         self.record_columns: list[str] = list(DEFAULT_RECORD_COLUMNS)
         self.lap_columns: list[str] = list(DEFAULT_LAP_COLUMNS)
@@ -109,6 +109,12 @@ class ActivityParser:
 
         Returns:
             Tuple containing records, laps, and an ``Activity`` summary.
+
+        Raises:
+            ParseError: The file fails to parse (``FitError`` for FIT, ``XmlError`` for
+                TCX/GPX).
+            ValueError: The file's type can't be determined, or isn't one of ``fit``,
+                ``tcx``, ``gpx``.
         """
         if ext is not None:
             ext_normalized = normalize_extension(ext)

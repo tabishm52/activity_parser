@@ -1,13 +1,13 @@
 """Tests for TCX/GPX parsing against hand-written fixture files."""
 
 import gzip
+import io
 from pathlib import Path
 
 import pandas as pd
 import pytest
-from lxml import etree
 
-from activity_parser import ActivityParser
+from activity_parser import ActivityParser, XmlError
 from activity_parser.parse_tcx_gpx import parse_gpx, parse_tcx
 
 FILES = Path(__file__).parent / "files"
@@ -334,11 +334,21 @@ def test_malformed_xml_recovery(tmp_path):
     truncated = tmp_path / "truncated.tcx"
     truncated.write_text(SAMPLE_TCX.read_text()[:2500])
 
-    with pytest.raises(etree.XMLSyntaxError):
+    with pytest.raises(XmlError):
         ActivityParser(strict_xml=True).parse(truncated)
 
     records, _, _ = ActivityParser().parse(truncated)
     assert len(records) >= 1
+
+
+def test_non_xml_bytes_raise():
+    with pytest.raises(XmlError, match="No parseable XML content"):
+        parse_tcx(io.BytesIO(b"this is not xml at all, just some prose."))
+
+
+def test_empty_bytes_raise_even_without_strict_xml():
+    with pytest.raises(XmlError, match="Document is empty"):
+        parse_tcx(io.BytesIO(b""))
 
 
 # ---------------------------------------------------------------------------
