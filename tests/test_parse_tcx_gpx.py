@@ -1,6 +1,7 @@
 """Tests for TCX/GPX parsing against hand-written fixture files."""
 
 import gzip
+import io
 from pathlib import Path
 
 import pandas as pd
@@ -338,6 +339,16 @@ def test_malformed_xml_recovery(tmp_path):
 
     records, _, _ = ActivityParser().parse(truncated)
     assert len(records) >= 1
+
+
+def test_non_xml_bytes_raise():
+    with pytest.raises(XmlError, match="No parseable XML content"):
+        parse_tcx(io.BytesIO(b"this is not xml at all, just some prose."))
+
+
+def test_empty_bytes_raise_even_without_strict_xml():
+    with pytest.raises(XmlError, match="Document is empty"):
+        parse_tcx(io.BytesIO(b""))
 
 
 # ---------------------------------------------------------------------------

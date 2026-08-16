@@ -35,9 +35,12 @@ def parse_xml_root(
     """Parses ``file`` into an XML root element, raising ``XmlError`` on malformed XML."""
     parser = etree.XMLParser(recover=not strict_xml)
     try:
-        return etree.parse(file, parser).getroot()
+        root = etree.parse(file, parser).getroot()
     except etree.XMLSyntaxError as e:
         raise XmlError(str(e)) from e
+    if root is None:
+        raise XmlError("No parseable XML content found.")
+    return root
 
 
 def remove_elements(root: etree._Element, *tags: str) -> None:
@@ -199,8 +202,8 @@ def parse_tcx(
         Tuple containing records, laps, and an ``Activity`` summary.
 
     Raises:
-        XmlError: The file's XML fails to parse (only possible when ``strict_xml`` is
-            True).
+        XmlError: The file's XML fails to parse (e.g. no XML content at all, or, when
+            ``strict_xml`` is True, malformed XML).
     """
     root = parse_xml_root(file, strict_xml)
 
@@ -242,8 +245,8 @@ def parse_gpx(
         don't have lap information, so the laps DataFrame will be empty.
 
     Raises:
-        XmlError: The file's XML fails to parse (only possible when ``strict_xml`` is
-            True).
+        XmlError: The file's XML fails to parse (e.g. no XML content at all, or, when
+            ``strict_xml`` is True, malformed XML).
     """
     root = parse_xml_root(file, strict_xml)
 
