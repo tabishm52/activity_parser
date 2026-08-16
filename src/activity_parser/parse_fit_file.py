@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import gzip
+import zlib
 from collections import defaultdict
 from collections.abc import Generator, Iterator, Mapping
 from os import PathLike
@@ -110,7 +111,8 @@ def copy_fit_frames(
         for frame in fitdecode.FitReader(fit_file, processor=processor, check_crc=crc_mode):
             if isinstance(frame, fitdecode.FitDataMessage):
                 yield frame
-    except fitdecode.FitError as e:
+    # gzip.open (open_fit_file) is lazy; decompression errors surface here too.
+    except (fitdecode.FitError, gzip.BadGzipFile, zlib.error, EOFError) as e:
         raise FitError(str(e)) from e
 
 

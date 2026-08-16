@@ -311,6 +311,25 @@ def test_non_fit_bytes_raise():
         parse_fit(io.BytesIO(b"this is not a FIT file"))
 
 
+@pytest.mark.parametrize(
+    "corrupt_bytes",
+    [
+        pytest.param(b"this is not gzip data at all", id="not_gzipped"),
+        pytest.param(
+            bytes.fromhex("1f8b08000000000000") + b"not real deflate data" * 5,
+            id="corrupt_deflate_stream",
+        ),
+        pytest.param(gzip.compress(b"x" * 10000)[:20], id="truncated_stream"),
+    ],
+)
+def test_corrupt_gzip_raises(tmp_path, corrupt_bytes):
+    corrupt = tmp_path / "corrupt.fit.gz"
+    corrupt.write_bytes(corrupt_bytes)
+
+    with pytest.raises(FitError):
+        parse_fit(corrupt)
+
+
 def test_parse_fit_no_records_yields_empty_datetime_index():
     # No record messages at all (e.g. a manually-logged workout): records should be
     # empty with a DatetimeIndex, matching TCX/GPX's laps-only behavior, rather than
