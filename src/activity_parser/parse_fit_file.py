@@ -47,8 +47,8 @@ FIT_LAPS_FRACTIONAL_PAIRS: dict[str, str] = {
 }
 
 # left_right_balance is bit-packed: one bit flags the right side, the rest is that
-# side's percentage. Per-record is uint8 (0x80/0x7F); lap/session/segment_lap
-# aggregates use a higher-precision uint16 (0x8000/0x3FFF, percentage x100).
+# side's percentage. Per-record is uint8 (percentage); lap/session/segment_lap
+# aggregates use a higher-precision uint16 (percentage x100).
 LEFT_RIGHT_BALANCE_COLUMN = "left_right_balance"
 LEFT_RIGHT_BALANCE_RIGHT_FLAG = 0x80
 LEFT_RIGHT_BALANCE_PERCENT_MASK = 0x7F
@@ -67,7 +67,7 @@ def coalesce_enhanced_columns(df: pd.DataFrame, pairs: Mapping[str, str]) -> pd.
 
 
 def add_fractional_columns(df: pd.DataFrame, pairs: Mapping[str, str]) -> pd.DataFrame:
-    """Adds each fractional-precision FIT column into its base cadence counterpart."""
+    """Adds each fractional-precision FIT column into its base counterpart."""
     df = df.copy()
     for base, fractional in pairs.items():
         if fractional not in df.columns:
@@ -117,7 +117,7 @@ def copy_fit_frames(
 
 
 def frame_to_dict(frame: fitdecode.FitDataMessage) -> dict[str, Any]:
-    """Convert one FIT frame to a dict."""
+    """Converts one FIT frame to a dict."""
     return {field.name: field.value for field in frame.fields}
 
 
@@ -170,19 +170,17 @@ def parse_fit(
 ) -> tuple[pd.DataFrame, pd.DataFrame, Activity]:
     """Loads a FIT activity into Pandas DataFrames.
 
-    Known message types and fields are converted to typed, canonically-named columns.
-    Unknown message types and fields are returned under fitdecode's ``unknown_<num>``
-    names. The ``session`` and ``file_id`` messages are summarized into the returned
-    ``Activity``; all other message types (``device_info``, proprietary ``unknown_<n>``
-    messages, etc.) are discarded.
+    Known fields are converted to typed, canonically-named columns. Unknown fields are
+    kept under an ``unknown_<n>`` name. The ``session`` and ``file_id`` messages are
+    summarized into the returned ``Activity``; all other message types are discarded.
 
     Assumes that the FIT file is all one activity, i.e. chained FIT files will be
     merged into one set of return values. If a file has more than one ``session`` or
     ``file_id`` message, only the first of each is used.
 
     Args:
-        file: File-like or path-like object. A path-like argument ending in ``.gz`` will
-            be unzipped before processing.
+        file: Binary file-like or path-like object. A path-like argument ending in
+            ``.gz`` will be unzipped before processing.
         check_crc: If True, verifies CRC integrity of the FIT file. If False, CRC
             verification is skipped.
 
@@ -251,15 +249,15 @@ def parse_fit_raw(
 
     Returns one DataFrame per FIT message type present in the file (e.g. ``record``,
     ``lap``, ``session``, ``device_info``, ...) with no renaming or other processing
-    besides fitdecode's ``StandardUnitsDataProcessor`` unit conversions.
+    besides standard unit conversions.
 
-    Message types fitdecode can't resolve against the FIT profile are keyed under its
-    ``unknown_<n>`` names. Chained FIT files have same-named messages merged across
-    the chain.
+    Message types that can't be resolved against the FIT profile are keyed under
+    ``unknown_<n>`` names. Chained FIT files have same-named messages merged across the
+    chain.
 
     Args:
-        file: File-like or path-like object. A path-like argument ending in ``.gz`` will
-            be unzipped before processing.
+        file: Binary file-like or path-like object. A path-like argument ending in
+            ``.gz`` will be unzipped before processing.
         check_crc: If True, verifies CRC integrity of the FIT file. If False, CRC
             verification is skipped.
 

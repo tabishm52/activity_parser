@@ -36,7 +36,9 @@ def select_and_reorder_cols(
 
 
 def normalize_extension(ext: str) -> str:
-    """Normalize an extension string to one of: fit, tcx, gpx."""
+    """Lowercases an extension string and strips any leading dot, raising ``ValueError``
+    for a bare ``gz``.
+    """
     normalized = ext.lower().lstrip(".")
     if normalized == "gz":
         raise ValueError("Ambiguous extension: .gz without base extension.")
@@ -44,7 +46,7 @@ def normalize_extension(ext: str) -> str:
 
 
 def infer_extension(file: str | PathLike[str]) -> str:
-    """Infer normalized extension from a path-like input."""
+    """Infers normalized extension from a path-like input."""
     p = Path(file)
     ext = p.suffix
     if ext.lower() == ".gz":
@@ -61,8 +63,8 @@ class ActivityParser:
     interchangeable use of DataFrames from the different activity file types.
 
     The output of ``parse`` is controlled by ``record_columns`` and ``lap_columns``,
-    which are set on each instance from ``default_columns``. Reassign or mutate them to
-    select different columns.
+    initialized on each instance from ``DEFAULT_RECORD_COLUMNS`` and
+    ``DEFAULT_LAP_COLUMNS``. Reassign or mutate them to select different columns.
     """
 
     def __init__(
@@ -108,7 +110,8 @@ class ActivityParser:
                 the name).
 
         Returns:
-            Tuple containing records, laps, and an ``Activity`` summary.
+            Tuple containing records, laps, and an ``Activity`` summary. GPX files have
+            no lap information, so laps is empty for them.
 
         Raises:
             ParseError: The file fails to parse (``FitError`` for FIT, ``XmlError`` for
