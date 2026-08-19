@@ -76,7 +76,7 @@ class XmlField:
 def _prefixed(
     prefix: FieldPath, ns: str, fields: Mapping[tuple[str, ...], XmlField]
 ) -> dict[FieldPath, XmlField]:
-    """Qualify bare-localname paths with a namespace and attach them under a prefix."""
+    """Qualifies bare-localname paths with a namespace and attaches them under a prefix."""
     return {prefix + tuple((ns, step) for step in path): field for path, field in fields.items()}
 
 

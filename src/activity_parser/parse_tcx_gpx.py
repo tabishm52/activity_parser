@@ -44,7 +44,7 @@ def parse_xml_root(
 
 
 def remove_elements(root: etree._Element, *tags: str) -> None:
-    """Remove all elements matching ``tags`` from the tree."""
+    """Removes all elements matching ``tags`` from the tree."""
     for element in root.iter(*tags):
         parent = element.getparent()
         if parent is not None:
@@ -151,7 +151,7 @@ def _row_from_fields(
     path that collides with it is kept too, under its full path, rather than dropped.
     """
     row: dict[str, str] = {}
-    for path, value in _walk(element, ()):
+    for path, value in walk_fields(element):
         field = fields.get(path) or _field_with_parent_namespace(path, fields)
         column = field.column if field is not None else unknown_column_name(path[-1])
         if column in row:
@@ -224,7 +224,7 @@ def parse_gpx(
     file: str | PathLike[str] | IO[str] | IO[bytes],
     strict_xml: bool = False,
 ) -> tuple[pd.DataFrame, pd.DataFrame, Activity]:
-    """Loads a GPX activity into a Pandas DataFrame.
+    """Loads a GPX activity into Pandas DataFrames.
 
     Known elements/attributes are converted to typed, canonically-named columns.
     Unknown elements/attributes are returned under a namespace-qualified name, e.g.
