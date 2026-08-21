@@ -15,8 +15,9 @@ import fitdecode
 import pandas as pd
 
 from .exceptions import FitError
+from .fit_fields import LAP_UNITS, RECORD_UNITS, SESSION_UNITS, convert_units, convert_units_mapping
 from .output import Activity
-from .postprocess import coerce_numeric_all_or_nothing, index_by_time
+from .postprocess import coerce_numeric_columns, index_by_time
 
 if TYPE_CHECKING:
     from _typeshed import SupportsRead
@@ -105,7 +106,7 @@ def copy_fit_frames(
     check_crc: bool,
 ) -> Iterator[fitdecode.FitDataMessage]:
     """Yields FIT data frames from a file-like object."""
-    processor = fitdecode.StandardUnitsDataProcessor()
+    processor = fitdecode.DefaultDataProcessor()
     crc_mode = fitdecode.CrcCheck.RAISE if check_crc else fitdecode.CrcCheck.DISABLED
     try:
         for frame in fitdecode.FitReader(fit_file, processor=processor, check_crc=crc_mode):
@@ -209,13 +210,9 @@ def parse_fit(
                 file_id = row
 
     records = pd.DataFrame(records_rows)
-
-    # None-valued fields cause object dtype; coerce numeric columns to float64.
-    for col in records.select_dtypes(include=["object", "str"]).columns:
-        records[col] = coerce_numeric_all_or_nothing(records[col])
-
+    records = coerce_numeric_columns(records)
     records = index_by_time(records, "timestamp")
-
+    records = convert_units(records, RECORD_UNITS)
     records = coalesce_enhanced_columns(records, FIT_RECORDS_ENHANCED_PAIRS)
     records = add_fractional_columns(records, FIT_RECORDS_FRACTIONAL_PAIRS)
     records = split_left_right_balance(
@@ -227,6 +224,8 @@ def parse_fit(
     records = records.rename(columns=FIT_RECORD_RENAME)
 
     laps = pd.DataFrame(laps_rows)
+    laps = coerce_numeric_columns(laps)
+    laps = convert_units(laps, LAP_UNITS)
     laps = coalesce_enhanced_columns(laps, FIT_LAPS_ENHANCED_PAIRS)
     laps = add_fractional_columns(laps, FIT_LAPS_FRACTIONAL_PAIRS)
     laps = split_left_right_balance(
@@ -236,7 +235,7 @@ def parse_fit(
         percent_scale=100.0,
     )
 
-    activity = build_activity(session, file_id)
+    activity = build_activity(convert_units_mapping(session or {}, SESSION_UNITS), file_id)
 
     return records, laps, activity
 
@@ -248,8 +247,8 @@ def parse_fit_raw(
     """Loads every message type in a FIT file into its own raw Pandas DataFrame.
 
     Returns one DataFrame per FIT message type present in the file (e.g. ``record``,
-    ``lap``, ``session``, ``device_info``, ...) with no renaming or other processing
-    besides standard unit conversions.
+    ``lap``, ``session``, ``device_info``, ...) with no renaming, unit conversion, or
+    other post-processing.
 
     Message types that can't be resolved against the FIT profile are keyed under
     ``unknown_<n>`` names. Chained FIT files have same-named messages merged across the

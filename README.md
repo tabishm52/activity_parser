@@ -133,19 +133,23 @@ Values are transcribed from the file, never computed/derived from records or lap
 ### FIT files
 
 FIT parsing wraps [`fitdecode`](https://github.com/polyvertex/fitdecode), which decodes against Garmin's public FIT SDK profile.
-Field values and types come from that profile, and units are converted via fitdecode's `StandardUnitsDataProcessor`.
+Field values and types come from that profile.
 
-This package transforms certain FIT fields beyond the processing done by fitdecode:
+`parse()` transforms certain FIT fields beyond decoding:
 
-- Some fields have lower- and higher-precision versions; by default, `parse()` returns only the higher-precision value, under the base field's name.
-- Other fields store sub-integer precision in a separate field, which `parse()` adds into the base field.
-- FIT's pedal power balance is a single bit-packed byte (a side flag plus a percentage); `parse()` decodes it into `left_balance`/`right_balance`.
+- Positions to degrees, distances to km, and speeds to kph.
+  Vertical rates (`avg_vam`, `vertical_speed`, and similar) stay in m/s.
+- Fields with lower- and higher-precision versions: only the higher-precision value is returned, under the base field's name.
+- Fields with sub-integer precision in a separate field: the precision is added into the base field.
+- FIT's pedal power balance, a single bit-packed byte (a side flag plus a percentage), is decoded into `left_balance`/`right_balance`.
 
 Messages/fields fitdecode can't resolve against the profile (e.g. proprietary extensions) are kept as raw values under `unknown_<n>` names.
 
 ### TCX & GPX files
 
 TCX and GPX files are parsed natively in this package.
+Recognized elements and attributes are mapped onto the same canonical column names as FIT, with the same unit conventions: distances to km, speeds to kph.
+
 The parser supports the following schema versions and extensions:
 
 | Format | Schema version | Extensions |

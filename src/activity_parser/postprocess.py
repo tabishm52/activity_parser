@@ -20,6 +20,19 @@ def coerce_numeric_all_or_nothing(values: pd.Series) -> pd.Series:
     return numeric
 
 
+def coerce_numeric_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Coerces every object/string column of ``df`` via ``coerce_numeric_all_or_nothing``.
+
+    None-valued fields cause object dtype even for otherwise-numeric columns; this
+    restores float64 wherever every non-null value in the column parses.
+    """
+    df = df.copy()
+    for col in df.select_dtypes(include=["object", "str"]).columns:
+        df[col] = coerce_numeric_all_or_nothing(df[col])
+
+    return df
+
+
 def index_by_time(records: pd.DataFrame, column: str) -> pd.DataFrame:
     """Sets ``column`` as the index, dropping rows with no timestamp or a duplicate one.
 
