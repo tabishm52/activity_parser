@@ -55,8 +55,8 @@ def _numeric_scale(factor: float) -> Converter:
     return convert
 
 
-# Conversion from meters and m/s to km and kph is done to align with processing done by
-# fitdecode.StandardUnitsDataProcessor
+# Meters and m/s are converted to km and kph, the units this package normalizes to
+# across all three formats (see fit_fields for the FIT side).
 NUMERIC: Converter = _numeric_scale(1.0)
 NUMERIC_M_TO_KM: Converter = _numeric_scale(1 / 1000)
 NUMERIC_MS_TO_KMH: Converter = _numeric_scale(3.6)

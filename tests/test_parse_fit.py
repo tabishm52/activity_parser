@@ -559,3 +559,19 @@ def test_parse_fit_raw_omits_absent_message_types():
 def test_parse_fit_raw_no_records_returns_empty_dict():
     raw = parse_fit_raw(io.BytesIO(empty_fit_bytes()))
     assert raw == {}
+
+
+def test_parse_fit_raw_keeps_fit_native_units():
+    raw = parse_fit_raw(EDGE_820)
+    records, _, _ = parse_fit(EDGE_820)
+    # Semicircles and meters, against parse_fit's degrees and km for the same file.
+    assert raw["record"]["position_lat"].iloc[0] == 446375435
+    assert records["latitude"].iloc[0] == pytest.approx(37.414757)
+    assert raw["record"]["distance"].iloc[-1] == pytest.approx(457.12)
+    assert records["distance"].iloc[-1] == pytest.approx(0.45712)
+
+
+def test_parse_fit_leaves_developer_fields_unconverted():
+    records, _, _ = parse_fit(DEVELOPER_DATA)
+    assert records["doughnuts_earned"].iloc[0] == 1
+    assert records["speed"].iloc[0] == pytest.approx(170.9568)
