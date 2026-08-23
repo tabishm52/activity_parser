@@ -186,6 +186,11 @@ def decode_fit(
     return normalize_messages(cast(Mapping[str, list[dict[str, Any]]], messages))
 
 
+def first_message(messages: Mapping[str, list[dict[str, Any]]], key: str) -> dict[str, Any] | None:
+    """Returns the first message of ``messages[key]``, or None if there are none."""
+    return next(iter(messages.get(key, [])), None)
+
+
 def build_activity(session: dict[str, Any] | None, file_id: dict[str, Any] | None) -> Activity:
     """Builds an ``Activity`` summary from a FIT file's ``session``/``file_id`` messages."""
     session = session or {}
@@ -259,8 +264,8 @@ def parse_fit(
     with open_fit_file(file) as fit_file:
         messages = decode_fit(fit_file, check_crc=check_crc, merge_heart_rates=True)
 
-    session = messages.get("session", [None])[0]
-    file_id = messages.get("file_id", [None])[0]
+    session = first_message(messages, "session")
+    file_id = first_message(messages, "file_id")
 
     records = pd.DataFrame(messages.get("record", []))
     records = coerce_numeric_columns(records)
