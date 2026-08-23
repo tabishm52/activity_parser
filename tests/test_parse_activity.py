@@ -79,6 +79,16 @@ def test_record_columns_is_mutable_per_instance():
     assert list(default_records.columns) != ["longitude", "latitude"]
 
 
+def test_column_lists_do_not_leak_across_instances():
+    parser = ActivityParser()
+    parser.record_columns.append("hdop")
+    parser.lap_columns.append("bogus_lap_column")
+
+    fresh = ActivityParser()
+    assert "hdop" not in fresh.record_columns
+    assert "bogus_lap_column" not in fresh.lap_columns
+
+
 def test_gpx_include_all_columns_appends_namespace_qualified_column():
     src = Path(__file__).parent / "files" / "gpx" / "unknown_extension.gpx"
     records, _, _ = ActivityParser(include_all_columns=True).parse(src)

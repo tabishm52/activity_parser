@@ -447,10 +447,16 @@ def test_activity_parser_fenix_5_run_canonical_columns():
     assert "total_distance" in laps.columns
 
 
-def test_developer_field_kept_in_raw_parse():
+def test_developer_field_kept_by_parse_fit():
     records, _, activity = parse_fit(DEVELOPER_DATA)
     assert records["doughnuts_earned"].tolist() == [1, 2, 3]
     assert activity.creator == "dynastream 9001"
+
+
+def test_developer_field_kept_in_raw_parse():
+    # parse_fit_raw's own entry point: flattened by name, same as parse_fit gets it.
+    raw = parse_fit_raw(DEVELOPER_DATA)
+    assert raw["record"]["doughnuts_earned"].tolist() == [1, 2, 3]
 
 
 def test_developer_field_dropped_by_default_kept_with_include_all_columns():
