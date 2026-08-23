@@ -6,12 +6,13 @@ import contextlib
 import gzip
 import zlib
 from collections.abc import Generator, Mapping
+from functools import cache
 from os import PathLike
 from pathlib import Path
 from typing import IO, TYPE_CHECKING, Any, cast
 
 import pandas as pd
-from garmin_fit_sdk import Decoder, Stream
+from garmin_fit_sdk import Decoder, Profile, Stream
 
 from .exceptions import FitError
 from .fit_fields import LAP_UNITS, RECORD_UNITS, SESSION_UNITS, convert_units, convert_units_mapping
@@ -100,6 +101,19 @@ def split_left_right_balance(
     return df
 
 
+@cache
+def _known_field_names() -> frozenset[str]:
+    """Every field name across every FIT profile message type, including sub-fields."""
+    names: set[str] = set()
+    for message in Profile["messages"].values():
+        for field in message["fields"].values():
+            names.add(field["name"])
+            for sub_field in field.get("sub_fields") or []:
+                names.add(sub_field["name"])
+
+    return frozenset(names)
+
+
 def _normalize_row(row: dict[str, Any], field_names: dict[int, str]) -> dict[str, Any]:
     """Renames int field keys to unknown_<n>, tuple-izes arrays, flattens dev fields."""
     normalized: dict[str, Any] = {}
@@ -111,6 +125,8 @@ def _normalize_row(row: dict[str, Any], field_names: dict[int, str]) -> dict[str
 
     for ordinal, value in (row.get("developer_fields") or {}).items():
         name = field_names.get(ordinal, f"developer_field_{ordinal}")
+        if name in _known_field_names():
+            name = f"developer_{name}"
         normalized[name] = tuple(value) if type(value) is list else value
 
     return normalized

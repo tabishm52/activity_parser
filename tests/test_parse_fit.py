@@ -513,6 +513,30 @@ def test_normalize_messages_developer_field_falls_back_when_field_name_absent():
     }
 
 
+def test_normalize_messages_prefixes_developer_field_colliding_with_known_name():
+    # A developer field's name is chosen by whoever wrote the device/app, so nothing
+    # stops it from matching a built-in FIT field like "speed".
+    messages = {
+        "field_description_mesgs": [{"key": 0, "field_name": "speed"}],
+        "record_mesgs": [{"timestamp": 1, "developer_fields": {0: 10.0}}],
+    }
+    assert normalize_messages(messages) == {
+        "field_description": [{"field_name": "speed"}],
+        "record": [{"timestamp": 1, "developer_speed": 10.0}],
+    }
+
+
+def test_normalize_messages_developer_field_does_not_overwrite_real_field():
+    messages = {
+        "field_description_mesgs": [{"key": 0, "field_name": "speed"}],
+        "record_mesgs": [{"speed": 5.0, "developer_fields": {0: 999.0}}],
+    }
+    assert normalize_messages(messages) == {
+        "field_description": [{"field_name": "speed"}],
+        "record": [{"speed": 5.0, "developer_speed": 999.0}],
+    }
+
+
 # ---------------------------------------------------------------------------
 # build_activity: plain dicts, no fixtures
 # ---------------------------------------------------------------------------
