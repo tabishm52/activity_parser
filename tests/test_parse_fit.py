@@ -499,8 +499,7 @@ def test_normalize_messages_renames_unresolved_field_description_field():
 
 
 def test_normalize_messages_developer_field_falls_back_when_field_name_absent():
-    # field_name is an optional field_description field, omitted (not None) when a
-    # device doesn't populate it.
+    # field_name is optional; garmin-fit-sdk omits it rather than emitting None.
     messages = {
         "field_description_mesgs": [{"key": 0}],
         "record_mesgs": [{"developer_fields": {0: 5.0}}],
@@ -512,8 +511,7 @@ def test_normalize_messages_developer_field_falls_back_when_field_name_absent():
 
 
 def test_normalize_messages_prefixes_developer_field_colliding_with_known_name():
-    # A developer field's name is chosen by whoever wrote the device/app, so nothing
-    # stops it from matching a built-in FIT field like "speed".
+    # A developer field's name is arbitrary, so it can match a real field like "speed".
     messages = {
         "field_description_mesgs": [{"key": 0, "field_name": "speed"}],
         "record_mesgs": [{"timestamp": 1, "developer_fields": {0: 10.0}}],
