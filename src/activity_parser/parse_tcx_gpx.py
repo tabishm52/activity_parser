@@ -7,7 +7,7 @@ extensions aren't silently dropped.
 """
 
 from collections.abc import Iterable, Iterator, Mapping
-from functools import cache
+from functools import lru_cache
 from os import PathLike
 from typing import IO, cast
 
@@ -94,7 +94,7 @@ def walk_fields(element: etree._Element) -> Iterator[tuple[FieldPath, str]]:
     yield from _walk(element, ())
 
 
-@cache
+@lru_cache(maxsize=1024)
 def _split_tag(tag: str) -> FieldPathStep:
     """Splits an lxml ``{namespace}localname`` tag into a ``FieldPath`` step."""
     if tag.startswith("{"):
