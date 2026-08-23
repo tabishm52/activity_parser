@@ -125,7 +125,7 @@ def _normalize_messages(
     done as plain dict manipulation before DataFrame construction.
 
     1. Strips the ``_mesgs`` suffix from message-type keys.
-    2. Renames an all-digit message-type key, or an ``int`` field key, to ``unknown_<n>``.
+    2. Renames an all-digit message-type key, or ``int`` field key, to ``unknown_<n>``.
     3. Flattens ``developer_fields`` by name via ``field_description_mesgs``.
     4. Converts ``list`` field values to ``tuple``.
     """

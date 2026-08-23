@@ -5,11 +5,13 @@ down to a leaf attribute or element (see ``parse_tcx_gpx.walk_fields``) to a can
 output column and a conversion.
 
 Schemas transcribed from:
-- TCX v2 / ActivityExtension v2: https://www8.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd
-  and .../ActivityExtensionv2.xsd
+- TCX v2 / ActivityExtension v2:
+  https://www8.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd and
+  .../ActivityExtensionv2.xsd
 - GPX 1.0 / 1.1: https://www.topografix.com/GPX/1/0/gpx.xsd and .../1/1/gpx.xsd
-- Garmin TrackPointExtension v1 / v2: https://www8.garmin.com/xmlschemas/TrackPointExtensionv1.xsd
-  and TrackPointExtensionv2.xsd
+- Garmin TrackPointExtension v1 / v2:
+  https://www8.garmin.com/xmlschemas/TrackPointExtensionv1.xsd and
+  .../TrackPointExtensionv2.xsd
 - Cluetrust GPXDATA: https://www.cluetrust.com/Schemas/gpxdata10.xsd
 """
 
