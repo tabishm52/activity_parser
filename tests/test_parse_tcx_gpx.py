@@ -287,12 +287,17 @@ def test_gpx_unknown_extension_kept_as_namespaced_string():
 def test_gpx_1_0_base_fields():
     # GPX 1.0 exposes course/speed directly; GPS-fix diagnostics aren't fitness data.
     records, _, _ = ActivityParser().parse(GPX10)
+    assert records.index.name == "time"
+    assert records.index.tolist() == [
+        pd.Timestamp("2026-01-05T08:00:00Z"),
+        pd.Timestamp("2026-01-05T08:00:01Z"),
+    ]
+    assert records["latitude"].tolist() == pytest.approx([37.0000, 37.0001])
+    assert records["longitude"].tolist() == pytest.approx([-122.0000, -122.0001])
+    assert records["altitude"].tolist() == pytest.approx([10.0, 11.0])
     assert records["course"].tolist() == pytest.approx([90.0, 91.0])
     assert records["speed"].tolist() == pytest.approx([18.0, 18.72])
     assert "fix_type" not in records.columns
-
-    normalized, _, _ = ActivityParser().parse(GPX10)
-    assert "fix_type" not in normalized.columns
 
 
 # ---------------------------------------------------------------------------
