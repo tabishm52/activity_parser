@@ -270,6 +270,14 @@ def test_gz_round_trip(tmp_path):
     pd.testing.assert_frame_equal(plain, unzipped)
 
 
+def test_gz_extension_case_insensitive(tmp_path):
+    gz_path = tmp_path / "ride.FIT.GZ"
+    gz_path.write_bytes(gzip.compress(EDGE_820.read_bytes()))
+
+    records, _, _ = ActivityParser().parse(gz_path)
+    assert len(records) == 15
+
+
 def test_crc_mismatch_recovery(tmp_path):
     corrupt = tmp_path / "corrupt_crc.fit"
     data = bytearray(EDGE_820.read_bytes())

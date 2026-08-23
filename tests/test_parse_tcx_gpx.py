@@ -342,6 +342,15 @@ def test_gz_round_trip(path, tmp_path):
     pd.testing.assert_frame_equal(plain, unzipped)
 
 
+@pytest.mark.parametrize("path", [SAMPLE_TCX, SAMPLE_GPX], ids=["tcx", "gpx"])
+def test_corrupt_gzip_raises(path, tmp_path):
+    corrupt = tmp_path / (path.name + ".gz")
+    corrupt.write_bytes(b"this is not gzip data at all")
+
+    with pytest.raises(XmlError):
+        ActivityParser().parse(corrupt)
+
+
 def test_malformed_xml_recovery(tmp_path):
     # Truncate mid-document: strict parsing raises, recovery parses the survivors
     truncated = tmp_path / "truncated.tcx"
