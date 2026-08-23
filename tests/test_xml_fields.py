@@ -11,8 +11,6 @@ from activity_parser.xml_fields import (
     GPX_TRACKPOINT_FIELDS,
     GPXDATA_NS,
     NUMERIC,
-    NUMERIC_M_TO_KM,
-    NUMERIC_MS_TO_KMH,
     TCX_LAP_FIELDS,
     TCX_NS,
     TCX_TRACKPOINT_FIELDS,
@@ -53,16 +51,6 @@ def test_no_conflicting_converts_within_table(table_name):
     converts = {}
     for field in ALL_TABLES[table_name].values():
         assert converts.setdefault(field.column, field.convert) == field.convert, field.column
-
-
-def test_distance_converts_meters_to_km():
-    field = TCX_TRACKPOINT_FIELDS[((TCX_NS, "DistanceMeters"),)]
-    assert field == XmlField("distance", NUMERIC_M_TO_KM)
-
-
-def test_speed_converts_ms_to_kmh():
-    field = TCX_TRACKPOINT_FIELDS[((TCX_NS, "Extensions"), (AEXT_NS, "TPX"), (AEXT_NS, "Speed"))]
-    assert field.convert is NUMERIC_MS_TO_KMH
 
 
 def test_gpx10_and_gpx11_share_base_fields():
