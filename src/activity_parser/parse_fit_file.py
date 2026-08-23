@@ -86,8 +86,8 @@ def split_left_right_balance(
     if LEFT_RIGHT_BALANCE_COLUMN not in df.columns:
         return df
 
-    # A quirk in the FIT profile renders right_flag/percent_mask as "right"/"mask"
-    # strings instead of ints; map them back before casting.
+    # The FIT profile declares this field's type as an enum, so its two magic byte
+    # values decode as strings instead of ints; map them back before casting.
     raw = df[LEFT_RIGHT_BALANCE_COLUMN].replace({"right": right_flag, "mask": percent_mask})
     present = raw.dropna().astype(int)
     is_right = (present & right_flag) != 0

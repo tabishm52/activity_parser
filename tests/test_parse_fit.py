@@ -253,7 +253,7 @@ def test_split_left_right_balance_noop_without_column():
 
 def test_split_left_right_balance_decodes_enum_quirk_values():
     # The FIT profile renders raw byte 0x80/0x7F as "right"/"mask" strings; confirm
-    # both are recovered rather than crashing.
+    # both are recovered rather than crashing on cast to float.
     df = pd.DataFrame({"left_right_balance": ["right", "mask", 180]})
     out = split_record_balance(df)
     assert out["right_balance"].tolist() == pytest.approx([0.0, -27.0, 52.0])
@@ -261,7 +261,7 @@ def test_split_left_right_balance_decodes_enum_quirk_values():
 
 
 def test_split_left_right_balance_decodes_enum_quirk_values_100_variant():
-    # Same profile quirk, but for the lap/session/segment_lap uint16 layout.
+    # Same FIT profile issue, but for the lap/session/segment_lap uint16 layout.
     df = pd.DataFrame({"left_right_balance": ["right", "mask", 37968]})
     out = split_left_right_balance(
         df,
