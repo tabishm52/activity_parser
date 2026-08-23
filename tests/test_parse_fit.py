@@ -500,6 +500,19 @@ def test_normalize_messages_renames_unresolved_field_description_field():
     }
 
 
+def test_normalize_messages_developer_field_falls_back_when_field_name_absent():
+    # field_name is an optional field_description field, omitted (not None) when a
+    # device doesn't populate it.
+    messages = {
+        "field_description_mesgs": [{"key": 0}],
+        "record_mesgs": [{"developer_fields": {0: 5.0}}],
+    }
+    assert normalize_messages(messages) == {
+        "field_description": [{}],
+        "record": [{"developer_field_0": 5.0}],
+    }
+
+
 # ---------------------------------------------------------------------------
 # build_activity: plain dicts, no fixtures
 # ---------------------------------------------------------------------------

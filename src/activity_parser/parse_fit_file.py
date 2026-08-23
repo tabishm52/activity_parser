@@ -130,7 +130,9 @@ def normalize_messages(
     4. Converts ``list`` field values to ``tuple``.
     """
     field_names = {
-        desc["key"]: desc["field_name"] for desc in messages.get("field_description_mesgs", [])
+        desc["key"]: desc["field_name"]
+        for desc in messages.get("field_description_mesgs", [])
+        if "field_name" in desc
     }
 
     result: dict[str, list[dict[str, Any]]] = {}
