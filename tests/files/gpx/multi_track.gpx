@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Two <trk> elements, unlike multi_segment.gpx's two <trkseg> in one. -->
+<gpx creator="activity_parser tests" version="1.1"
+    xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>Track One</name>
+    <trkseg>
+      <trkpt lat="37.0" lon="-122.0">
+        <time>2026-01-05T08:00:00Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>Track Two</name>
+    <trkseg>
+      <trkpt lat="37.5" lon="-122.5">
+        <time>2026-01-05T08:00:01Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

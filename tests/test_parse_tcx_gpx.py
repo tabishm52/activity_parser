@@ -37,6 +37,8 @@ LAPS_ONLY_TCX = TCX_FILES / "laps_only.tcx"
 ACTIVITY_METADATA_TCX = TCX_FILES / "activity_metadata.tcx"
 LX_NAMESPACE_RESET_TCX = TCX_FILES / "lx_namespace_reset.tcx"
 METADATA_GPX = GPX_FILES / "metadata.gpx"
+MULTI_ACTIVITY_TCX = TCX_FILES / "multi_activity.tcx"
+MULTI_TRACK_GPX = GPX_FILES / "multi_track.gpx"
 
 
 # ---------------------------------------------------------------------------
@@ -176,6 +178,15 @@ def test_tcx_lx_namespace_reset_does_not_overreach():
     assert low_laps["NotARealField"].tolist() == ["99"]
 
 
+def test_tcx_multi_activity_merges_records_and_laps_first_activity_wins_summary():
+    # Records/laps merge from both Activities; the summary reflects only the first.
+    records, laps, activity = ActivityParser().parse(MULTI_ACTIVITY_TCX)
+    assert records["heart_rate"].tolist() == [100, 140]
+    assert laps["total_distance"].tolist() == pytest.approx([0.5, 1.0])
+    assert activity.sport == "Biking"
+    assert activity.start_time == pd.Timestamp("2026-01-05T08:00:00Z")
+
+
 # ---------------------------------------------------------------------------
 # GPX
 # ---------------------------------------------------------------------------
@@ -298,6 +309,12 @@ def test_gpx_1_0_base_fields():
     assert records["course"].tolist() == pytest.approx([90.0, 91.0])
     assert records["speed"].tolist() == pytest.approx([18.0, 18.72])
     assert "fix_type" not in records.columns
+
+
+def test_gpx_multiple_tracks_merged():
+    # Two separate <trk> elements, unlike multi_segment.gpx's two <trkseg> in one.
+    records, _, _ = ActivityParser().parse(MULTI_TRACK_GPX)
+    assert records["latitude"].tolist() == pytest.approx([37.0, 37.5])
 
 
 # ---------------------------------------------------------------------------
