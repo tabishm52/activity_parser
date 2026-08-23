@@ -105,17 +105,14 @@ def test_tcx_without_position():
 
 
 def test_tcx_no_time_rows_dropped():
-    # Trackpoints without a <Time> element get a NaT index; these should be dropped
-    # rather than collapsed together as "duplicate" NaT timestamps.
+    # NaT rows (missing <Time>) are dropped individually, not merged as duplicates.
     records, _, _ = ActivityParser().parse(NO_TIME_TCX)
     assert len(records) == 2
     assert records["heart_rate"].tolist() == [100, 101]
 
 
 def test_tcx_mixed_offset_times():
-    # xsd:dateTime allows explicit non-UTC offsets and naive (no-offset) values; all
-    # three trackpoints should parse and normalize to UTC rather than raising or being
-    # coerced to NaT and dropped.
+    # xsd:dateTime allows naive and non-UTC-offset values; both should parse to UTC.
     records, _, _ = ActivityParser().parse(MIXED_OFFSET_TCX)
     assert len(records) == 3
     index = records.index
@@ -135,7 +132,6 @@ def test_tcx_run_cadence_extension():
     assert records["cadence"].tolist() == [85, 86]
     assert records["power"].tolist() == [250, 255]
     assert records["speed"].tolist() == pytest.approx([10.8, 10.8])
-    # LX lap extension fields
     assert laps["avg_cadence"].tolist() == [85]
     assert laps["max_cadence"].tolist() == [90]
     assert laps["steps"].tolist() == [300]
@@ -151,8 +147,7 @@ def test_tcx_base_cadence_beats_run_cadence():
 
 
 def test_tcx_duplicate_element_keeps_both_values():
-    # Two literal <Cadence> elements in one Trackpoint: the first claims "cadence", the
-    # second is kept under its full-path column rather than being dropped.
+    # Two <Cadence> elements: first claims "cadence", second keeps its full path.
     records, _, _ = ActivityParser().parse(DUPLICATE_CADENCE_TCX)
     assert records["cadence"].tolist() == [80]
     low_records, _, _ = parse_tcx(DUPLICATE_CADENCE_TCX)
@@ -169,16 +164,14 @@ def test_tcx_laps_only_file_has_empty_records():
 
 
 def test_tcx_lx_namespace_reset_still_resolves():
-    # TrainerRoad resets AvgSpeed to no namespace inside a correctly-namespaced LX
-    # wrapper; it should still resolve via LX's own namespace.
+    # TrainerRoad resets AvgSpeed to no namespace; it must still resolve via LX.
     _, laps, _ = ActivityParser().parse(LX_NAMESPACE_RESET_TCX)
     assert laps["avg_speed"].tolist() == pytest.approx([28.8])
     assert laps["max_cadence"].tolist() == [95]
 
 
 def test_tcx_lx_namespace_reset_does_not_overreach():
-    # A namespace-reset leaf whose name isn't a real LX field must stay unrecognized,
-    # not get matched to something else just because it shares LX's namespace.
+    # A reset-namespace leaf that isn't a real LX field must stay unrecognized.
     _, low_laps, _ = parse_tcx(LX_NAMESPACE_RESET_TCX)
     assert low_laps["NotARealField"].tolist() == ["99"]
 
@@ -202,11 +195,8 @@ def test_gpx_records_values():
     assert records["cadence"].tolist() == [80, 81, 82]
     assert records["power"].tolist() == [200, 210, 220]
     assert (records["temperature"] == 19).all()
-    # speed is in m/s in the GPX extension, converted to km/h for consistency with FIT
-    # and TCX.
+    # speed (m/s in the GPX extension) converts to km/h, like FIT and TCX.
     assert records["speed"].tolist() == pytest.approx([18.0, 18.72, 19.44])
-
-    # GPX has no lap information
     assert laps.empty
 
 
@@ -229,25 +219,21 @@ def test_gpx_multiple_track_segments():
 
 
 def test_gpx_no_time_rows_dropped():
-    # Trackpoints without a <time> element get a NaT index; these should be dropped
-    # rather than collapsed together as "duplicate" NaT timestamps.
+    # NaT rows (missing <time>) are dropped individually, not merged as duplicates.
     records, _, _ = ActivityParser().parse(NO_TIME_GPX)
     assert len(records) == 2
     assert records["heart_rate"].tolist() == [100, 101]
 
 
 def test_gpx_route_with_no_time_anywhere_keeps_all_rows():
-    # A planned route (no <time> on any trackpoint, legal per the GPX schema) should
-    # keep its points rather than being dropped entirely like the partial-missing case.
+    # Legal per GPX schema: a route with no <time> anywhere keeps all its points.
     records, _, _ = ActivityParser().parse(ROUTE_NO_TIME_GPX)
     assert len(records) == 3
     assert records["altitude"].tolist() == pytest.approx([10.0, 11.0, 12.0])
 
 
 def test_gpx_non_numeric_speed_passed_through():
-    # One non-numeric speed value means the column skips numeric coercion; the m/s ->
-    # km/h conversion must then skip it too (arithmetic on strings raises) and pass the
-    # raw values through unchanged.
+    # A non-numeric speed skips coercion; unit conversion then skips it too, unchanged.
     records, _, _ = ActivityParser().parse(BAD_SPEED_GPX)
     assert len(records) == 3
     assert records["speed"].tolist() == ["5.0", "n/a", "5.4"]
@@ -256,9 +242,7 @@ def test_gpx_non_numeric_speed_passed_through():
 
 
 def test_gpx_mixed_offset_times():
-    # xsd:dateTime allows explicit non-UTC offsets and naive (no-offset) values; all
-    # three trackpoints should parse and normalize to UTC rather than raising or being
-    # coerced to NaT and dropped.
+    # xsd:dateTime allows naive and non-UTC-offset values; both should parse to UTC.
     records, _, _ = ActivityParser().parse(MIXED_OFFSET_GPX)
     assert len(records) == 3
     index = records.index
@@ -301,9 +285,7 @@ def test_gpx_unknown_extension_kept_as_namespaced_string():
 
 
 def test_gpx_1_0_base_fields():
-    # GPX 1.0 exposes course/speed directly (no <extensions> wrapper). GPS-fix-quality
-    # diagnostics (hdop, satellites, fix_type, ...) are schema-known but aren't fitness
-    # data, so they're left out of record_columns.
+    # GPX 1.0 exposes course/speed directly; GPS-fix diagnostics aren't fitness data.
     records, _, _ = ActivityParser().parse(GPX10)
     assert records["course"].tolist() == pytest.approx([90.0, 91.0])
     assert records["speed"].tolist() == pytest.approx([18.0, 18.72])
@@ -329,8 +311,7 @@ def test_gz_round_trip(path, tmp_path):
 
 
 def test_malformed_xml_recovery(tmp_path):
-    # Truncate mid-document: strict parsing raises, recovery parses the trackpoints that
-    # survive
+    # Truncate mid-document: strict parsing raises, recovery parses the survivors
     truncated = tmp_path / "truncated.tcx"
     truncated.write_text(SAMPLE_TCX.read_text()[:2500])
 
@@ -365,8 +346,7 @@ def test_parse_tcx_low_level_matches_high_level_known_columns():
 
 
 def test_tcx_unrelated_unknowns_with_same_leaf_name_both_kept():
-    # VendorA/value and VendorB/value would collide on the same unknown column if only
-    # the leaf name were used; the second must survive under its full path instead.
+    # VendorA/value and VendorB/value collide on leaf name alone; both must survive.
     records, _, _ = parse_tcx(UNKNOWN_COLLISION_TCX)
     ns = "http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2"
     assert records[f"{{{ns}}}value"].tolist() == ["111"]
@@ -382,8 +362,7 @@ def test_tcx_mixed_content_keeps_both_text_and_child():
 
 
 def test_tcx_type_attribute_only_skipped_for_xsi_namespace():
-    # Only genuine xsi:type is schema-validation metadata; a same-named attribute in
-    # another namespace is real data and must be kept.
+    # Only genuine xsi:type is metadata; a same-named attribute elsewhere is real data.
     records, _, _ = parse_tcx(VENDOR_TYPE_ATTRIBUTE_TCX)
     assert records["{urn:example:vendor}type"].tolist() == ["vendor-real-data"]
     assert "SomeSchemaType" not in records.iloc[0].tolist()

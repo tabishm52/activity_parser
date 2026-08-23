@@ -15,8 +15,7 @@ from activity_parser.fit_fields import (
     convert_units_mapping,
 )
 
-# Profile fields in m/s that are vertical rates, conventionally reported in m/s or
-# m/h rather than km/h. Excluded from the tables when they are generated.
+# Excluded from unit conversion from m/s to km/h
 VERTICAL_RATE_FIELDS = frozenset(
     {
         "ascent_rate",
@@ -76,9 +75,10 @@ def generate_table(message_name: str) -> dict[str, float]:
     ids=lambda arg: arg if isinstance(arg, str) else "",
 )
 def test_table_covers_installed_profile(message_name, table):
-    """Every unit-bearing field the installed profile has must be in our frozen table
-    with the same factor. Extra entries in the frozen table (from a newer or older
-    profile) are fine — they can't affect data the installed SDK actually returns.
+    """Every field the profile requires must be in ``table`` with the right factor.
+
+    Extra entries (from a newer or older profile) are fine; they can't affect what the
+    installed SDK actually returns.
     """
     required = generate_table(message_name)
     assert {name: table.get(name) for name in required} == required

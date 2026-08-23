@@ -31,10 +31,7 @@ DEVELOPER_DATA = FILES / "DeveloperData.fit"
 
 
 def empty_fit_bytes() -> bytes:
-    """Builds the smallest valid FIT stream: a 12-byte header and CRC footer, no
-    data messages. check_crc=False (the parse_fit default) skips CRC verification,
-    so the footer value itself is irrelevant.
-    """
+    """Builds the smallest valid FIT stream, with no data messages."""
     header = struct.pack("<2BHI4s", 12, 0x10, 100, 0, b".FIT")
     return header + struct.pack("<H", 0)
 
@@ -251,16 +248,15 @@ def test_split_left_right_balance_noop_without_column():
     assert "right_balance" not in out.columns
 
 
-def test_split_left_right_balance_decodes_enum_quirk_values():
-    # The FIT profile renders raw byte 0x80/0x7F as "right"/"mask" strings; confirm
-    # both are recovered rather than crashing on cast to float.
+def test_split_left_right_balance_decodes_enum_values():
+    # Confirm the enum strings are recovered rather than crashing on cast.
     df = pd.DataFrame({"left_right_balance": ["right", "mask", 180]})
     out = split_record_balance(df)
     assert out["right_balance"].tolist() == pytest.approx([0.0, -27.0, 52.0])
     assert out["left_balance"].tolist() == pytest.approx([100.0, 127.0, 48.0])
 
 
-def test_split_left_right_balance_decodes_enum_quirk_values_100_variant():
+def test_split_left_right_balance_decodes_enum_values_100():
     # Same FIT profile issue, but for the lap/session/segment_lap uint16 layout.
     df = pd.DataFrame({"left_right_balance": ["right", "mask", 37968]})
     out = split_left_right_balance(
@@ -283,8 +279,6 @@ def test_gz_round_trip(tmp_path):
 
 
 def test_crc_mismatch_recovery(tmp_path):
-    # Flip the last byte of the file's CRC footer: check_crc=True raises, the
-    # default (False) skips verification and parses the file anyway.
     corrupt = tmp_path / "corrupt_crc.fit"
     data = bytearray(EDGE_820.read_bytes())
     data[-1] ^= 0xFF
@@ -328,9 +322,7 @@ def test_corrupt_gzip_raises(tmp_path, corrupt_bytes):
 
 
 def test_parse_fit_no_records_yields_empty_datetime_index():
-    # No record messages at all (e.g. a manually-logged workout): records should be
-    # empty with a DatetimeIndex, matching TCX/GPX's laps-only behavior, rather than
-    # falling back to a RangeIndex.
+    # Matches TCX/GPX laps-only behavior: an empty index, not a RangeIndex fallback.
     records, laps, activity = parse_fit(io.BytesIO(empty_fit_bytes()))
     assert records.empty
     assert records.index.name == "timestamp"
@@ -367,8 +359,6 @@ def test_parse_fit_laps_only_fixture():
 
 
 def test_parse_fit_multi_session_uses_first_session_and_file_id():
-    # Docstring contract: with more than one session/file_id message, only the first
-    # of each is used.
     _, _, activity = parse_fit(io.BytesIO(synthetic_fit.multi_session()))
     assert activity.sport == "running"
     assert activity.total_elapsed_time == 60.0
@@ -376,21 +366,16 @@ def test_parse_fit_multi_session_uses_first_session_and_file_id():
 
 
 def test_parse_fit_chained_files(tmp_path):
-    # A chained FIT stream is just two FIT sequences back-to-back; parse_fit should
-    # merge their records (both fixtures happen to share 2 real-world timestamps,
-    # which the usual dedup guard drops) and keep only the first file's
-    # session/file_id.
     chained = tmp_path / "chained.fit"
     chained.write_bytes(EDGE_820.read_bytes() + FENIX_5.read_bytes())
 
     records, _, activity = parse_fit(chained)
-    assert len(records) == 15 + 19 - 2
+    assert len(records) == 15 + 19 - 2  # the fixtures happen to share 2 timestamps
     assert activity.creator == "garmin edge_820"
 
 
 def test_parse_fit_left_right_balance_end_to_end():
-    # parse_fit is the low-level entry point: left_right_balance is kept alongside the
-    # decoded columns. ActivityParser's curated column selection is what drops it.
+    # parse_fit keeps left_right_balance; only ActivityParser curation drops it.
     records, laps, _ = parse_fit(io.BytesIO(synthetic_fit.left_right_balance()))
     assert records["left_balance"].tolist() == pytest.approx([48.0, 52.0])
     assert records["right_balance"].tolist() == pytest.approx([52.0, 48.0])
@@ -418,16 +403,14 @@ def test_parse_fit_left_right_balance_enum_quirk_end_to_end():
 
 
 def test_parse_fit_coercion_skips_column_with_non_numeric_value():
-    # left_power_phase is an array field: one row has two values (decodes to a
-    # tuple), making the column object-dtype and un-coercible as a whole, so it must
-    # pass through unchanged while a sibling column with only a genuinely missing
-    # value still coerces to float64.
     records, _, _ = parse_fit(io.BytesIO(synthetic_fit.coercion_skip()))
+    # left_power_phase with a tuple value for one row must pass through unchanged.
     assert records["left_power_phase"].tolist() == [
         pytest.approx(9.84375),
         (pytest.approx(9.84375), pytest.approx(19.6875)),
         pytest.approx(29.53125),
     ]
+    # A sibling column with a missing value still coerces to float64.
     assert records["temperature"].dtype == "float64"
     assert records["temperature"].tolist()[0::2] == pytest.approx([20.0, 21.0])
     assert records["temperature"].isna().tolist() == [False, True, False]
@@ -435,8 +418,7 @@ def test_parse_fit_coercion_skips_column_with_non_numeric_value():
 
 def test_parse_fit_merges_heart_rate_stream():
     records, _, _ = parse_fit(io.BytesIO(synthetic_fit.heart_rate_merge()))
-    # First two records fall in the hr stream's coverage (150 bpm); the third has no
-    # in-window samples and keeps its device value.
+    # No hr coverage for the third record; it keeps its device value (100).
     assert records["heart_rate"].tolist() == [150, 150, 100]
 
 

@@ -64,7 +64,6 @@ def test_parse_unsupported_extension():
 
 
 def test_parse_explicit_ext_overrides_path(tmp_path):
-    # ext takes precedence over the path suffix
     src = Path(__file__).parent / "files" / "gpx" / "sample.gpx"
     odd_name = tmp_path / "export.dat"
     odd_name.write_bytes(src.read_bytes())
@@ -74,8 +73,6 @@ def test_parse_explicit_ext_overrides_path(tmp_path):
 
 
 def test_tcx_columns_match_canonical_order():
-    # parse_tcx already emits canonical names; ActivityParser only selects/orders them,
-    # dropping any namespace-qualified columns for unrecognized elements.
     parser = ActivityParser()
     records, laps, _ = parser.parse(Path(__file__).parent / "files" / "tcx" / "sample.tcx")
     assert list(records.columns) == [c for c in parser.record_columns if c in records.columns]
