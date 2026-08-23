@@ -140,7 +140,9 @@ FIT parsing wraps [`garmin-fit-sdk`](https://pypi.org/project/garmin-fit-sdk/), 
   Vertical rates (`avg_vam`, `vertical_speed`, and similar) stay in m/s.
 - For fields with lower- and higher-precision versions, only the higher-precision value is returned, under the base field's name.
 - For fields with sub-integer precision in a separate field, the precision is added into the base field.
-- Pedal power balance (a bit-packed field) is decoded into `left_balance`/`right_balance`.
+- `left_right_balance` (a bit-packed field) is decoded into `left_balance`/`right_balance`.
+- `heart_rate` is merged with a higher-rate `hr` stream when the file has one.
+  Records outside its coverage keep their own device value.
 
 Messages/fields that can't be resolved against the FIT profile (e.g. proprietary extensions) are kept as raw values under `unknown_<n>` names.
 Developer fields are resolved to their file-embedded names and flattened into ordinary columns alongside built-in fields.

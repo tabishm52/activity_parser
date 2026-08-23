@@ -433,6 +433,19 @@ def test_parse_fit_coercion_skips_column_with_non_numeric_value():
     assert records["temperature"].isna().tolist() == [False, True, False]
 
 
+def test_parse_fit_merges_heart_rate_stream():
+    records, _, _ = parse_fit(io.BytesIO(synthetic_fit.heart_rate_merge()))
+    # First two records fall in the hr stream's coverage (150 bpm); the third has no
+    # in-window samples and keeps its device value.
+    assert records["heart_rate"].tolist() == [150, 150, 100]
+
+
+def test_parse_fit_raw_does_not_merge_heart_rate_stream():
+    raw = parse_fit_raw(io.BytesIO(synthetic_fit.heart_rate_merge()))
+    assert raw["record"]["heart_rate"].tolist() == [100, 100, 100]
+    assert len(raw["hr"]) == 2
+
+
 # ---------------------------------------------------------------------------
 # Vendored real-device files: a running activity and a developer-fields sample
 # ---------------------------------------------------------------------------

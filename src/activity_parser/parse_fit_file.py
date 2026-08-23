@@ -157,7 +157,9 @@ def _normalize_messages(
     return result
 
 
-def decode_fit(fit_file: SupportsRead[bytes], check_crc: bool) -> dict[str, list[dict[str, Any]]]:
+def decode_fit(
+    fit_file: SupportsRead[bytes], check_crc: bool, merge_heart_rates: bool
+) -> dict[str, list[dict[str, Any]]]:
     """Decodes a FIT file-like object into rows grouped by message type."""
     try:
         data = bytearray(fit_file.read())
@@ -166,7 +168,7 @@ def decode_fit(fit_file: SupportsRead[bytes], check_crc: bool) -> dict[str, list
         raise FitError(str(e)) from e
 
     messages, errors = Decoder(Stream.from_byte_array(data)).read(
-        enable_crc_check=check_crc, merge_heart_rates=False
+        enable_crc_check=check_crc, merge_heart_rates=merge_heart_rates
     )
     if errors:
         raise FitError(str(errors[0])) from errors[0]
@@ -245,7 +247,7 @@ def parse_fit(
             when ``check_crc`` is True).
     """
     with open_fit_file(file) as fit_file:
-        messages = decode_fit(fit_file, check_crc=check_crc)
+        messages = decode_fit(fit_file, check_crc=check_crc, merge_heart_rates=True)
 
     session = messages.get("session", [None])[0]
     file_id = messages.get("file_id", [None])[0]
@@ -288,15 +290,11 @@ def parse_fit_raw(
     """Loads every message type in a FIT file into its own raw Pandas DataFrame.
 
     Returns one DataFrame per FIT message type present in the file (e.g. ``record``,
-    ``lap``, ``session``, ``device_info``, ...) with only structural normalization
-    applied: field values are decoded as-is, in FIT-native units (e.g. positions in
-    semicircles, distances in meters, speeds in m/s) rather than this package's usual
-    degrees/km/kph. Developer fields are flattened into named columns and array fields
-    become tuples, but there's no renaming, unit conversion, or other post-processing.
+    ``lap``, ``session``, ``device_info``, ...), decoded in FIT-native units.
 
-    Message and field names that can't be resolved against the FIT profile are keyed
-    under ``unknown_<n>`` names. Chained FIT files have same-named messages merged
-    across the chain.
+    Only structural normalizations are applied: developer fields flattened, arrays as
+    tuples, unresolved names as ``unknown_<n>``. Chained FIT files have same-named
+    messages merged across the chain.
 
     Args:
         file: Binary file-like or path-like object. A path-like argument ending in
@@ -313,6 +311,6 @@ def parse_fit_raw(
             when ``check_crc`` is True).
     """
     with open_fit_file(file) as fit_file:
-        messages = decode_fit(fit_file, check_crc=check_crc)
+        messages = decode_fit(fit_file, check_crc=check_crc, merge_heart_rates=False)
 
     return {name: pd.DataFrame(rows) for name, rows in messages.items()}
