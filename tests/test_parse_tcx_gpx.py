@@ -37,6 +37,9 @@ LAPS_ONLY_TCX = TCX_FILES / "laps_only.tcx"
 ACTIVITY_METADATA_TCX = TCX_FILES / "activity_metadata.tcx"
 LX_NAMESPACE_RESET_TCX = TCX_FILES / "lx_namespace_reset.tcx"
 METADATA_GPX = GPX_FILES / "metadata.gpx"
+MULTI_ACTIVITY_TCX = TCX_FILES / "multi_activity.tcx"
+MULTI_TRACK_GPX = GPX_FILES / "multi_track.gpx"
+NO_ACTIVITY_TCX = TCX_FILES / "no_activity.tcx"
 
 
 # ---------------------------------------------------------------------------
@@ -95,6 +98,15 @@ def test_tcx_activity_creator_and_notes():
     assert activity.sport == "Running"
     assert activity.creator == "Garmin Forerunner 945"
     assert activity.notes == "Morning run"
+
+
+def test_tcx_no_activity_element_yields_empty_activity():
+    # A Course file: legal TCX with no <Activity> element to summarize at all.
+    records, laps, activity = ActivityParser().parse(NO_ACTIVITY_TCX)
+    assert records.empty
+    assert laps.empty
+    assert activity.sport is None
+    assert activity.start_time is None
 
 
 def test_tcx_without_position():
@@ -174,6 +186,15 @@ def test_tcx_lx_namespace_reset_does_not_overreach():
     # A reset-namespace leaf that isn't a real LX field must stay unrecognized.
     _, low_laps, _ = parse_tcx(LX_NAMESPACE_RESET_TCX)
     assert low_laps["NotARealField"].tolist() == ["99"]
+
+
+def test_tcx_multi_activity_merges_records_and_laps_first_activity_wins_summary():
+    # Records/laps merge from both Activities; the summary reflects only the first.
+    records, laps, activity = ActivityParser().parse(MULTI_ACTIVITY_TCX)
+    assert records["heart_rate"].tolist() == [100, 140]
+    assert laps["total_distance"].tolist() == pytest.approx([0.5, 1.0])
+    assert activity.sport == "Biking"
+    assert activity.start_time == pd.Timestamp("2026-01-05T08:00:00Z")
 
 
 # ---------------------------------------------------------------------------
@@ -287,12 +308,23 @@ def test_gpx_unknown_extension_kept_as_namespaced_string():
 def test_gpx_1_0_base_fields():
     # GPX 1.0 exposes course/speed directly; GPS-fix diagnostics aren't fitness data.
     records, _, _ = ActivityParser().parse(GPX10)
+    assert records.index.name == "time"
+    assert records.index.tolist() == [
+        pd.Timestamp("2026-01-05T08:00:00Z"),
+        pd.Timestamp("2026-01-05T08:00:01Z"),
+    ]
+    assert records["latitude"].tolist() == pytest.approx([37.0000, 37.0001])
+    assert records["longitude"].tolist() == pytest.approx([-122.0000, -122.0001])
+    assert records["altitude"].tolist() == pytest.approx([10.0, 11.0])
     assert records["course"].tolist() == pytest.approx([90.0, 91.0])
     assert records["speed"].tolist() == pytest.approx([18.0, 18.72])
     assert "fix_type" not in records.columns
 
-    normalized, _, _ = ActivityParser().parse(GPX10)
-    assert "fix_type" not in normalized.columns
+
+def test_gpx_multiple_tracks_merged():
+    # Two separate <trk> elements, unlike multi_segment.gpx's two <trkseg> in one.
+    records, _, _ = ActivityParser().parse(MULTI_TRACK_GPX)
+    assert records["latitude"].tolist() == pytest.approx([37.0, 37.5])
 
 
 # ---------------------------------------------------------------------------
@@ -308,6 +340,15 @@ def test_gz_round_trip(path, tmp_path):
     plain, _, _ = ActivityParser().parse(path)
     unzipped, _, _ = ActivityParser().parse(gz_path)
     pd.testing.assert_frame_equal(plain, unzipped)
+
+
+@pytest.mark.parametrize("path", [SAMPLE_TCX, SAMPLE_GPX], ids=["tcx", "gpx"])
+def test_corrupt_gzip_raises(path, tmp_path):
+    corrupt = tmp_path / (path.name + ".gz")
+    corrupt.write_bytes(b"this is not gzip data at all")
+
+    with pytest.raises(XmlError):
+        ActivityParser().parse(corrupt)
 
 
 def test_malformed_xml_recovery(tmp_path):
@@ -335,6 +376,11 @@ def test_empty_bytes_raise_even_without_strict_xml():
 # ---------------------------------------------------------------------------
 # low-level parse_tcx/parse_gpx: unknown-element preservation
 # ---------------------------------------------------------------------------
+
+
+def test_tcx_laps_do_not_leak_trackpoint_columns():
+    _, laps, _ = parse_tcx(SAMPLE_TCX)
+    assert not any("Trackpoint" in col for col in laps.columns)
 
 
 def test_parse_tcx_low_level_matches_high_level_known_columns():

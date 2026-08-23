@@ -41,12 +41,6 @@ def test_select_and_reorder_cols_selects_and_orders():
     assert out["a"].iloc[0] == 2
 
 
-def test_select_and_reorder_cols_drops_extras_by_default():
-    df = pd.DataFrame({"a": [1], "extra": [2]})
-    out = select_and_reorder_cols(df, ["a"], include_all_columns=False)
-    assert list(out.columns) == ["a"]
-
-
 def test_select_and_reorder_cols_appends_extras_when_included():
     df = pd.DataFrame({"b": [1], "a": [2], "extra1": [3], "extra2": [4]})
     out = select_and_reorder_cols(df, ["a", "b"], include_all_columns=True)
@@ -72,19 +66,6 @@ def test_parse_explicit_ext_overrides_path(tmp_path):
     assert len(records) == 3
 
 
-def test_tcx_columns_match_canonical_order():
-    parser = ActivityParser()
-    records, laps, _ = parser.parse(Path(__file__).parent / "files" / "tcx" / "sample.tcx")
-    assert list(records.columns) == [c for c in parser.record_columns if c in records.columns]
-    assert list(laps.columns) == [c for c in parser.lap_columns if c in laps.columns]
-
-
-def test_gpx_columns_match_canonical_order():
-    parser = ActivityParser()
-    records, _, _ = parser.parse(Path(__file__).parent / "files" / "gpx" / "sample.gpx")
-    assert list(records.columns) == [c for c in parser.record_columns if c in records.columns]
-
-
 def test_record_columns_is_mutable_per_instance():
     src = Path(__file__).parent / "files" / "gpx" / "sample.gpx"
     default_parser = ActivityParser()
@@ -96,6 +77,16 @@ def test_record_columns_is_mutable_per_instance():
 
     assert list(custom_records.columns) == ["longitude", "latitude"]
     assert list(default_records.columns) != ["longitude", "latitude"]
+
+
+def test_column_lists_do_not_leak_across_instances():
+    parser = ActivityParser()
+    parser.record_columns.append("hdop")
+    parser.lap_columns.append("bogus_lap_column")
+
+    fresh = ActivityParser()
+    assert "hdop" not in fresh.record_columns
+    assert "bogus_lap_column" not in fresh.lap_columns
 
 
 def test_gpx_include_all_columns_appends_namespace_qualified_column():

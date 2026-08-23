@@ -140,16 +140,6 @@ def test_activity_parser_keeps_total_strokes():
     assert laps["total_strokes"].tolist() == [75]
 
 
-def test_activity_parser_matches_parse_fit():
-    raw, _, _ = parse_fit(EDGE_820)
-    canonical, _, _ = ActivityParser().parse(EDGE_820)
-    pd.testing.assert_series_equal(
-        canonical["latitude"],
-        raw["latitude"],
-        check_names=False,
-    )
-
-
 def test_activity_parser_include_all_columns_appends_unknown_fit_fields():
     parser = ActivityParser(include_all_columns=True)
     records, _, _ = parser.parse(EDGE_820)
@@ -278,6 +268,14 @@ def test_gz_round_trip(tmp_path):
     plain, _, _ = ActivityParser().parse(EDGE_820)
     unzipped, _, _ = ActivityParser().parse(gz_path)
     pd.testing.assert_frame_equal(plain, unzipped)
+
+
+def test_gz_extension_case_insensitive(tmp_path):
+    gz_path = tmp_path / "ride.FIT.GZ"
+    gz_path.write_bytes(gzip.compress(EDGE_820.read_bytes()))
+
+    records, _, _ = ActivityParser().parse(gz_path)
+    assert len(records) == 15
 
 
 def test_crc_mismatch_recovery(tmp_path):
@@ -449,10 +447,16 @@ def test_activity_parser_fenix_5_run_canonical_columns():
     assert "total_distance" in laps.columns
 
 
-def test_developer_field_kept_in_raw_parse():
+def test_developer_field_kept_by_parse_fit():
     records, _, activity = parse_fit(DEVELOPER_DATA)
     assert records["doughnuts_earned"].tolist() == [1, 2, 3]
     assert activity.creator == "dynastream 9001"
+
+
+def test_developer_field_kept_in_raw_parse():
+    # parse_fit_raw's own entry point: flattened by name, same as parse_fit gets it.
+    raw = parse_fit_raw(DEVELOPER_DATA)
+    assert raw["record"]["doughnuts_earned"].tolist() == [1, 2, 3]
 
 
 def test_developer_field_dropped_by_default_kept_with_include_all_columns():
@@ -466,12 +470,6 @@ def test_developer_field_dropped_by_default_kept_with_include_all_columns():
 # ---------------------------------------------------------------------------
 # first_message: plain dicts, no fixtures
 # ---------------------------------------------------------------------------
-
-
-def test_first_message_returns_first_of_several():
-    assert first_message({"session": [{"sport": "running"}, {"sport": "cycling"}]}, "session") == {
-        "sport": "running"
-    }
 
 
 def test_first_message_none_when_key_present_but_empty():

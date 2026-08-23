@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Two <Activity> elements: records/laps merge, summary reflects only the first. -->
+<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2">
+  <Activities>
+    <Activity Sport="Biking">
+      <Id>2026-01-05T08:00:00Z</Id>
+      <Lap StartTime="2026-01-05T08:00:00Z">
+        <TotalTimeSeconds>60.0</TotalTimeSeconds>
+        <DistanceMeters>500.0</DistanceMeters>
+        <Track>
+          <Trackpoint>
+            <Time>2026-01-05T08:00:00Z</Time>
+            <HeartRateBpm><Value>100</Value></HeartRateBpm>
+          </Trackpoint>
+        </Track>
+      </Lap>
+    </Activity>
+    <Activity Sport="Running">
+      <Id>2026-01-05T09:00:00Z</Id>
+      <Lap StartTime="2026-01-05T09:00:00Z">
+        <TotalTimeSeconds>120.0</TotalTimeSeconds>
+        <DistanceMeters>1000.0</DistanceMeters>
+        <Track>
+          <Trackpoint>
+            <Time>2026-01-05T09:00:00Z</Time>
+            <HeartRateBpm><Value>140</Value></HeartRateBpm>
+          </Trackpoint>
+        </Track>
+      </Lap>
+    </Activity>
+  </Activities>
+</TrainingCenterDatabase>
