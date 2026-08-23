@@ -5,14 +5,13 @@ from __future__ import annotations
 import contextlib
 import gzip
 import zlib
-from collections import defaultdict
-from collections.abc import Generator, Iterator, Mapping
+from collections.abc import Generator, Mapping
 from os import PathLike
 from pathlib import Path
-from typing import IO, TYPE_CHECKING, Any
+from typing import IO, TYPE_CHECKING, Any, cast
 
-import fitdecode
 import pandas as pd
+from garmin_fit_sdk import Decoder, Stream
 
 from .exceptions import FitError
 from .fit_fields import LAP_UNITS, RECORD_UNITS, SESSION_UNITS, convert_units, convert_units_mapping
@@ -87,8 +86,8 @@ def split_left_right_balance(
     if LEFT_RIGHT_BALANCE_COLUMN not in df.columns:
         return df
 
-    # fitdecode has a bug that renders right_flag/percent_mask as "right"/"mask"
-    # strings instead of ints; map them back before casting.
+    # The FIT profile declares this field's type as an enum, so its two magic byte
+    # values decode as strings instead of ints; map them back before casting.
     raw = df[LEFT_RIGHT_BALANCE_COLUMN].replace({"right": right_flag, "mask": percent_mask})
     present = raw.dropna().astype(int)
     is_right = (present & right_flag) != 0
@@ -101,25 +100,80 @@ def split_left_right_balance(
     return df
 
 
-def copy_fit_frames(
-    fit_file: SupportsRead[bytes],
-    check_crc: bool,
-) -> Iterator[fitdecode.FitDataMessage]:
-    """Yields FIT data frames from a file-like object."""
-    processor = fitdecode.DefaultDataProcessor()
-    crc_mode = fitdecode.CrcCheck.RAISE if check_crc else fitdecode.CrcCheck.DISABLED
+def _flatten_developer_fields(row: dict[str, Any], field_names: dict[int, str]) -> dict[str, Any]:
+    """Splices developer_fields' {ordinal: value} entries back in by name."""
+    developer_fields = row.pop("developer_fields", None)
+    if not developer_fields:
+        return row
+
+    for ordinal, value in developer_fields.items():
+        name = field_names.get(ordinal, f"developer_field_{ordinal}")
+        row[name] = tuple(value) if isinstance(value, list) else value
+
+    return row
+
+
+def _normalize_row(row: dict[str, Any], field_names: dict[int, str]) -> dict[str, Any]:
+    """Renames int field keys to unknown_<n>, tuple-izes arrays, flattens dev fields."""
+    row = _flatten_developer_fields(dict(row), field_names)
+
+    normalized: dict[str, Any] = {}
+    for key, value in row.items():
+        name = f"unknown_{key}" if isinstance(key, int) else key
+        normalized[name] = tuple(value) if isinstance(value, list) else value
+
+    return normalized
+
+
+def _normalize_messages(
+    messages: Mapping[str, list[dict[str, Any]]],
+) -> dict[str, list[dict[str, Any]]]:
+    """Normalizes decoded FIT messages.
+
+    These are per-element operations that don't benefit from vectorization, so they are
+    done as plain dict manipulation before DataFrame construction.
+
+    1. Strips the ``_mesgs`` suffix from message-type keys.
+    2. Renames an all-digit message-type key, or an ``int`` field key, to ``unknown_<n>``.
+    3. Flattens ``developer_fields`` by name via ``field_description_mesgs``.
+    4. Converts ``list`` field values to ``tuple``.
+    """
+    field_names = {
+        desc["key"]: desc["field_name"] for desc in messages.get("field_description_mesgs", [])
+    }
+
+    result: dict[str, list[dict[str, Any]]] = {}
+    for key, rows in messages.items():
+        name = key[:-6] if key.endswith("_mesgs") else key
+        if name.isdigit():
+            name = f"unknown_{name}"
+
+        if name == "field_description":
+            # "key" is FIT decoder bookkeeping, not a real FIT field.
+            result[name] = [{k: v for k, v in row.items() if k != "key"} for row in rows]
+        else:
+            result[name] = [_normalize_row(row, field_names) for row in rows]
+
+    return result
+
+
+def decode_fit(
+    fit_file: SupportsRead[bytes], check_crc: bool, merge_heart_rates: bool
+) -> dict[str, list[dict[str, Any]]]:
+    """Decodes a FIT file-like object into rows grouped by message type."""
     try:
-        for frame in fitdecode.FitReader(fit_file, processor=processor, check_crc=crc_mode):
-            if isinstance(frame, fitdecode.FitDataMessage):
-                yield frame
-    # gzip.open (open_fit_file) is lazy; decompression errors surface here too.
-    except (fitdecode.FitError, gzip.BadGzipFile, zlib.error, EOFError) as e:
+        data = bytearray(fit_file.read())
+    # gzip.open (open_fit_file) is lazy; decompression errors surface here.
+    except (gzip.BadGzipFile, zlib.error, EOFError) as e:
         raise FitError(str(e)) from e
 
+    messages, errors = Decoder(Stream.from_byte_array(data)).read(
+        enable_crc_check=check_crc, merge_heart_rates=merge_heart_rates
+    )
+    if errors:
+        raise FitError(str(errors[0])) from errors[0]
 
-def frame_to_dict(frame: fitdecode.FitDataMessage) -> dict[str, Any]:
-    """Converts one FIT frame to a dict."""
-    return {field.name: field.value for field in frame.fields}
+    return _normalize_messages(cast(Mapping[str, list[dict[str, Any]]], messages))
 
 
 def build_activity(session: dict[str, Any] | None, file_id: dict[str, Any] | None) -> Activity:
@@ -192,24 +246,13 @@ def parse_fit(
         FitError: The FIT file fails to decode (e.g. invalid header, or a CRC mismatch
             when ``check_crc`` is True).
     """
-    records_rows: list[dict[str, Any]] = []
-    laps_rows: list[dict[str, Any]] = []
-    session: dict[str, Any] | None = None
-    file_id: dict[str, Any] | None = None
-
     with open_fit_file(file) as fit_file:
-        for frame in copy_fit_frames(fit_file, check_crc=check_crc):
-            row = frame_to_dict(frame)
-            if frame.name == "record":
-                records_rows.append(row)
-            elif frame.name == "lap":
-                laps_rows.append(row)
-            elif frame.name == "session" and session is None:
-                session = row
-            elif frame.name == "file_id" and file_id is None:
-                file_id = row
+        messages = decode_fit(fit_file, check_crc=check_crc, merge_heart_rates=True)
 
-    records = pd.DataFrame(records_rows)
+    session = messages.get("session", [None])[0]
+    file_id = messages.get("file_id", [None])[0]
+
+    records = pd.DataFrame(messages.get("record", []))
     records = coerce_numeric_columns(records)
     records = index_by_time(records, "timestamp")
     records = convert_units(records, RECORD_UNITS)
@@ -223,7 +266,7 @@ def parse_fit(
     )
     records = records.rename(columns=FIT_RECORD_RENAME)
 
-    laps = pd.DataFrame(laps_rows)
+    laps = pd.DataFrame(messages.get("lap", []))
     laps = coerce_numeric_columns(laps)
     laps = convert_units(laps, LAP_UNITS)
     laps = coalesce_enhanced_columns(laps, FIT_LAPS_ENHANCED_PAIRS)
@@ -247,12 +290,11 @@ def parse_fit_raw(
     """Loads every message type in a FIT file into its own raw Pandas DataFrame.
 
     Returns one DataFrame per FIT message type present in the file (e.g. ``record``,
-    ``lap``, ``session``, ``device_info``, ...) with no renaming, unit conversion, or
-    other post-processing.
+    ``lap``, ``session``, ``device_info``, ...), decoded in FIT-native units.
 
-    Message types that can't be resolved against the FIT profile are keyed under
-    ``unknown_<n>`` names. Chained FIT files have same-named messages merged across the
-    chain.
+    Only structural normalizations are applied: developer fields flattened, arrays as
+    tuples, unresolved names as ``unknown_<n>``. Chained FIT files have same-named
+    messages merged across the chain.
 
     Args:
         file: Binary file-like or path-like object. A path-like argument ending in
@@ -268,10 +310,7 @@ def parse_fit_raw(
         FitError: The FIT file fails to decode (e.g. invalid header, or a CRC mismatch
             when ``check_crc`` is True).
     """
-    rows_by_type: dict[str, list[dict[str, Any]]] = defaultdict(list)
-
     with open_fit_file(file) as fit_file:
-        for frame in copy_fit_frames(fit_file, check_crc=check_crc):
-            rows_by_type[frame.name].append(frame_to_dict(frame))
+        messages = decode_fit(fit_file, check_crc=check_crc, merge_heart_rates=False)
 
-    return {name: pd.DataFrame(rows) for name, rows in rows_by_type.items()}
+    return {name: pd.DataFrame(rows) for name, rows in messages.items()}
