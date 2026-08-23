@@ -100,27 +100,18 @@ def split_left_right_balance(
     return df
 
 
-def _flatten_developer_fields(row: dict[str, Any], field_names: dict[int, str]) -> dict[str, Any]:
-    """Splices developer_fields' {ordinal: value} entries back in by name."""
-    developer_fields = row.pop("developer_fields", None)
-    if not developer_fields:
-        return row
-
-    for ordinal, value in developer_fields.items():
-        name = field_names.get(ordinal, f"developer_field_{ordinal}")
-        row[name] = tuple(value) if isinstance(value, list) else value
-
-    return row
-
-
 def _normalize_row(row: dict[str, Any], field_names: dict[int, str]) -> dict[str, Any]:
     """Renames int field keys to unknown_<n>, tuple-izes arrays, flattens dev fields."""
-    row = _flatten_developer_fields(dict(row), field_names)
-
     normalized: dict[str, Any] = {}
     for key, value in row.items():
-        name = f"unknown_{key}" if isinstance(key, int) else key
-        normalized[name] = tuple(value) if isinstance(value, list) else value
+        if key == "developer_fields":
+            continue
+        name = f"unknown_{key}" if type(key) is int else key
+        normalized[name] = tuple(value) if type(value) is list else value
+
+    for ordinal, value in (row.get("developer_fields") or {}).items():
+        name = field_names.get(ordinal, f"developer_field_{ordinal}")
+        normalized[name] = tuple(value) if type(value) is list else value
 
     return normalized
 
