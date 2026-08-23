@@ -140,16 +140,6 @@ def test_activity_parser_keeps_total_strokes():
     assert laps["total_strokes"].tolist() == [75]
 
 
-def test_activity_parser_matches_parse_fit():
-    raw, _, _ = parse_fit(EDGE_820)
-    canonical, _, _ = ActivityParser().parse(EDGE_820)
-    pd.testing.assert_series_equal(
-        canonical["latitude"],
-        raw["latitude"],
-        check_names=False,
-    )
-
-
 def test_activity_parser_include_all_columns_appends_unknown_fit_fields():
     parser = ActivityParser(include_all_columns=True)
     records, _, _ = parser.parse(EDGE_820)

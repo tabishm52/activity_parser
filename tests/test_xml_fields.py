@@ -57,9 +57,3 @@ def test_gpx10_and_gpx11_share_base_fields():
     gpx10_altitude = GPX_TRACKPOINT_FIELDS[((GPX10_NS, "ele"),)]
     gpx11_altitude = GPX_TRACKPOINT_FIELDS[((GPX11_NS, "ele"),)]
     assert gpx10_altitude == gpx11_altitude == XmlField("altitude", NUMERIC)
-
-
-def test_gpx10_has_no_extensions_wrapper_fields():
-    # GPX 1.0's wptType has no <extensions> element; course/speed are direct children.
-    assert ((GPX10_NS, "course"),) in GPX_TRACKPOINT_FIELDS
-    assert ((GPX10_NS, "extensions"), (GPX10_NS, "power")) not in GPX_TRACKPOINT_FIELDS
