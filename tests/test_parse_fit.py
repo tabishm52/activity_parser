@@ -18,6 +18,7 @@ from activity_parser.parse_fit_file import (
     add_fractional_columns,
     build_activity,
     coalesce_enhanced_columns,
+    coalesce_enhanced_mapping,
     first_message,
     normalize_messages,
     parse_fit,
@@ -173,6 +174,30 @@ def test_coalesce_enhanced_columns_noop_without_enhanced_column():
     out = coalesce_enhanced_columns(df, {"altitude": "enhanced_altitude"})
     assert list(out["altitude"]) == [100.0, 200.0]
     assert "enhanced_altitude" not in out.columns
+
+
+def test_coalesce_enhanced_mapping_prefers_enhanced_when_both_present():
+    row = {"speed": 10.0, "enhanced_speed": 10.912}
+    out = coalesce_enhanced_mapping(row, {"speed": "enhanced_speed"})
+    assert out["speed"] == 10.912
+
+
+def test_coalesce_enhanced_mapping_falls_back_to_base_when_enhanced_absent():
+    row = {"speed": 10.0}
+    out = coalesce_enhanced_mapping(row, {"speed": "enhanced_speed"})
+    assert out["speed"] == 10.0
+
+
+def test_coalesce_enhanced_mapping_keeps_enhanced_zero():
+    row = {"speed": 5.0, "enhanced_speed": 0.0}
+    out = coalesce_enhanced_mapping(row, {"speed": "enhanced_speed"})
+    assert out["speed"] == 0.0
+
+
+def test_coalesce_enhanced_mapping_fills_missing_base_key():
+    row = {"enhanced_speed": 10.0}
+    out = coalesce_enhanced_mapping(row, {"speed": "enhanced_speed"})
+    assert out["speed"] == 10.0
 
 
 def test_add_fractional_columns_sums_both_present():
@@ -596,6 +621,15 @@ def test_build_activity_reads_session_fields():
     assert activity.avg_heart_rate == 90
     assert activity.max_heart_rate == 112
     assert activity.avg_speed == 9.9
+    assert activity.max_speed == 13.1
+
+
+def test_build_activity_prefers_enhanced_speed():
+    activity = build_activity(
+        session={"avg_speed": 9.9, "enhanced_avg_speed": 9.912, "max_speed": 13.1},
+        file_id=None,
+    )
+    assert activity.avg_speed == 9.912
     assert activity.max_speed == 13.1
 
 

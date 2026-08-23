@@ -33,7 +33,8 @@ FIT_RECORDS_ENHANCED_PAIRS: dict[str, str] = {
     "altitude": "enhanced_altitude",
     "speed": "enhanced_speed",
 }
-FIT_LAPS_ENHANCED_PAIRS: dict[str, str] = {
+# Shared by laps and session: the FIT profile uses the same field names for both.
+FIT_SPEED_ENHANCED_PAIRS: dict[str, str] = {
     "avg_speed": "enhanced_avg_speed",
     "max_speed": "enhanced_max_speed",
 }
@@ -65,6 +66,17 @@ def coalesce_enhanced_columns(df: pd.DataFrame, pairs: Mapping[str, str]) -> pd.
             continue
         df[base] = df[enhanced].combine_first(df[base]) if base in df.columns else df[enhanced]
     return df
+
+
+def coalesce_enhanced_mapping(row: Mapping[str, Any], pairs: Mapping[str, str]) -> dict[str, Any]:
+    """Prefers each enhanced field's value over its base counterpart, for mappings."""
+    coalesced = dict(row)
+    for base, enhanced in pairs.items():
+        value = row.get(enhanced)
+        if value is None:
+            value = row.get(base)
+        coalesced[base] = value
+    return coalesced
 
 
 def add_fractional_columns(df: pd.DataFrame, pairs: Mapping[str, str]) -> pd.DataFrame:
@@ -193,7 +205,7 @@ def first_message(messages: Mapping[str, list[dict[str, Any]]], key: str) -> dic
 
 def build_activity(session: dict[str, Any] | None, file_id: dict[str, Any] | None) -> Activity:
     """Builds an ``Activity`` summary from a FIT file's ``session``/``file_id`` messages."""
-    session = session or {}
+    session = coalesce_enhanced_mapping(session or {}, FIT_SPEED_ENHANCED_PAIRS)
     file_id = file_id or {}
 
     start_time = session.get("start_time")
@@ -284,7 +296,7 @@ def parse_fit(
     laps = pd.DataFrame(messages.get("lap", []))
     laps = coerce_numeric_columns(laps)
     laps = convert_units(laps, LAP_UNITS)
-    laps = coalesce_enhanced_columns(laps, FIT_LAPS_ENHANCED_PAIRS)
+    laps = coalesce_enhanced_columns(laps, FIT_SPEED_ENHANCED_PAIRS)
     laps = add_fractional_columns(laps, FIT_LAPS_FRACTIONAL_PAIRS)
     laps = split_left_right_balance(
         laps,
