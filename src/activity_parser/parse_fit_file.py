@@ -116,7 +116,7 @@ def _normalize_row(row: dict[str, Any], field_names: dict[int, str]) -> dict[str
     return normalized
 
 
-def _normalize_messages(
+def normalize_messages(
     messages: Mapping[str, list[dict[str, Any]]],
 ) -> dict[str, list[dict[str, Any]]]:
     """Normalizes decoded FIT messages.
@@ -134,16 +134,17 @@ def _normalize_messages(
     }
 
     result: dict[str, list[dict[str, Any]]] = {}
-    for key, rows in messages.items():
+    for key, mesgs in messages.items():
         name = key[:-6] if key.endswith("_mesgs") else key
         if name.isdigit():
             name = f"unknown_{name}"
 
+        rows = mesgs
         if name == "field_description":
             # "key" is FIT decoder bookkeeping, not a real FIT field.
-            result[name] = [{k: v for k, v in row.items() if k != "key"} for row in rows]
-        else:
-            result[name] = [_normalize_row(row, field_names) for row in rows]
+            rows = [{k: v for k, v in row.items() if k != "key"} for row in rows]
+
+        result[name] = [_normalize_row(row, field_names) for row in rows]
 
     return result
 
@@ -164,7 +165,7 @@ def decode_fit(
     if errors:
         raise FitError(str(errors[0])) from errors[0]
 
-    return _normalize_messages(cast(Mapping[str, list[dict[str, Any]]], messages))
+    return normalize_messages(cast(Mapping[str, list[dict[str, Any]]], messages))
 
 
 def build_activity(session: dict[str, Any] | None, file_id: dict[str, Any] | None) -> Activity:

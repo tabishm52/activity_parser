@@ -18,6 +18,7 @@ from activity_parser.parse_fit_file import (
     add_fractional_columns,
     build_activity,
     coalesce_enhanced_columns,
+    normalize_messages,
     parse_fit,
     parse_fit_raw,
     split_left_right_balance,
@@ -477,6 +478,26 @@ def test_developer_field_dropped_by_default_kept_with_include_all_columns():
 
     all_records, _, _ = ActivityParser(include_all_columns=True).parse(DEVELOPER_DATA)
     assert all_records["doughnuts_earned"].tolist() == [1, 2, 3]
+
+
+# ---------------------------------------------------------------------------
+# normalize_messages: plain dicts, no fixtures
+# ---------------------------------------------------------------------------
+
+
+def test_normalize_messages_strips_field_description_bookkeeping_key():
+    messages = {"field_description_mesgs": [{"key": 0, "field_name": "doughnuts_earned"}]}
+    assert normalize_messages(messages) == {
+        "field_description": [{"field_name": "doughnuts_earned"}]
+    }
+
+
+def test_normalize_messages_renames_unresolved_field_description_field():
+    # Same unresolved-field mechanism as record's unknown_61/unknown_66.
+    messages = {"field_description_mesgs": [{"key": 0, "field_name": "x", 16: [1, 2]}]}
+    assert normalize_messages(messages) == {
+        "field_description": [{"field_name": "x", "unknown_16": (1, 2)}]
+    }
 
 
 # ---------------------------------------------------------------------------
