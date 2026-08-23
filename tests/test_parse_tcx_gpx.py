@@ -39,6 +39,7 @@ LX_NAMESPACE_RESET_TCX = TCX_FILES / "lx_namespace_reset.tcx"
 METADATA_GPX = GPX_FILES / "metadata.gpx"
 MULTI_ACTIVITY_TCX = TCX_FILES / "multi_activity.tcx"
 MULTI_TRACK_GPX = GPX_FILES / "multi_track.gpx"
+NO_ACTIVITY_TCX = TCX_FILES / "no_activity.tcx"
 
 
 # ---------------------------------------------------------------------------
@@ -97,6 +98,15 @@ def test_tcx_activity_creator_and_notes():
     assert activity.sport == "Running"
     assert activity.creator == "Garmin Forerunner 945"
     assert activity.notes == "Morning run"
+
+
+def test_tcx_no_activity_element_yields_empty_activity():
+    # A Course file: legal TCX with no <Activity> element to summarize at all.
+    records, laps, activity = ActivityParser().parse(NO_ACTIVITY_TCX)
+    assert records.empty
+    assert laps.empty
+    assert activity.sport is None
+    assert activity.start_time is None
 
 
 def test_tcx_without_position():
