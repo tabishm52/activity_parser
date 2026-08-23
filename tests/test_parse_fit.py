@@ -18,6 +18,7 @@ from activity_parser.parse_fit_file import (
     add_fractional_columns,
     build_activity,
     coalesce_enhanced_columns,
+    normalize_messages,
     parse_fit,
     parse_fit_raw,
     split_left_right_balance,
@@ -477,6 +478,63 @@ def test_developer_field_dropped_by_default_kept_with_include_all_columns():
 
     all_records, _, _ = ActivityParser(include_all_columns=True).parse(DEVELOPER_DATA)
     assert all_records["doughnuts_earned"].tolist() == [1, 2, 3]
+
+
+# ---------------------------------------------------------------------------
+# normalize_messages: plain dicts, no fixtures
+# ---------------------------------------------------------------------------
+
+
+def test_normalize_messages_strips_field_description_bookkeeping_key():
+    messages = {"field_description_mesgs": [{"key": 0, "field_name": "doughnuts_earned"}]}
+    assert normalize_messages(messages) == {
+        "field_description": [{"field_name": "doughnuts_earned"}]
+    }
+
+
+def test_normalize_messages_renames_unresolved_field_description_field():
+    # Same unresolved-field mechanism as record's unknown_61/unknown_66.
+    messages = {"field_description_mesgs": [{"key": 0, "field_name": "x", 16: [1, 2]}]}
+    assert normalize_messages(messages) == {
+        "field_description": [{"field_name": "x", "unknown_16": (1, 2)}]
+    }
+
+
+def test_normalize_messages_developer_field_falls_back_when_field_name_absent():
+    # field_name is an optional field_description field, omitted (not None) when a
+    # device doesn't populate it.
+    messages = {
+        "field_description_mesgs": [{"key": 0}],
+        "record_mesgs": [{"developer_fields": {0: 5.0}}],
+    }
+    assert normalize_messages(messages) == {
+        "field_description": [{}],
+        "record": [{"developer_field_0": 5.0}],
+    }
+
+
+def test_normalize_messages_prefixes_developer_field_colliding_with_known_name():
+    # A developer field's name is chosen by whoever wrote the device/app, so nothing
+    # stops it from matching a built-in FIT field like "speed".
+    messages = {
+        "field_description_mesgs": [{"key": 0, "field_name": "speed"}],
+        "record_mesgs": [{"timestamp": 1, "developer_fields": {0: 10.0}}],
+    }
+    assert normalize_messages(messages) == {
+        "field_description": [{"field_name": "speed"}],
+        "record": [{"timestamp": 1, "developer_speed": 10.0}],
+    }
+
+
+def test_normalize_messages_developer_field_does_not_overwrite_real_field():
+    messages = {
+        "field_description_mesgs": [{"key": 0, "field_name": "speed"}],
+        "record_mesgs": [{"speed": 5.0, "developer_fields": {0: 999.0}}],
+    }
+    assert normalize_messages(messages) == {
+        "field_description": [{"field_name": "speed"}],
+        "record": [{"speed": 5.0, "developer_speed": 999.0}],
+    }
 
 
 # ---------------------------------------------------------------------------

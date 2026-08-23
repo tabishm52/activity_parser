@@ -6,12 +6,13 @@ import contextlib
 import gzip
 import zlib
 from collections.abc import Generator, Mapping
+from functools import cache
 from os import PathLike
 from pathlib import Path
 from typing import IO, TYPE_CHECKING, Any, cast
 
 import pandas as pd
-from garmin_fit_sdk import Decoder, Stream
+from garmin_fit_sdk import Decoder, Profile, Stream
 
 from .exceptions import FitError
 from .fit_fields import LAP_UNITS, RECORD_UNITS, SESSION_UNITS, convert_units, convert_units_mapping
@@ -100,6 +101,19 @@ def split_left_right_balance(
     return df
 
 
+@cache
+def _known_field_names() -> frozenset[str]:
+    """Every field name across every FIT profile message type, including sub-fields."""
+    names: set[str] = set()
+    for message in Profile["messages"].values():
+        for field in message["fields"].values():
+            names.add(field["name"])
+            for sub_field in field.get("sub_fields") or []:
+                names.add(sub_field["name"])
+
+    return frozenset(names)
+
+
 def _normalize_row(row: dict[str, Any], field_names: dict[int, str]) -> dict[str, Any]:
     """Renames int field keys to unknown_<n>, tuple-izes arrays, flattens dev fields."""
     normalized: dict[str, Any] = {}
@@ -111,12 +125,14 @@ def _normalize_row(row: dict[str, Any], field_names: dict[int, str]) -> dict[str
 
     for ordinal, value in (row.get("developer_fields") or {}).items():
         name = field_names.get(ordinal, f"developer_field_{ordinal}")
+        if name in _known_field_names():
+            name = f"developer_{name}"
         normalized[name] = tuple(value) if type(value) is list else value
 
     return normalized
 
 
-def _normalize_messages(
+def normalize_messages(
     messages: Mapping[str, list[dict[str, Any]]],
 ) -> dict[str, list[dict[str, Any]]]:
     """Normalizes decoded FIT messages.
@@ -130,20 +146,23 @@ def _normalize_messages(
     4. Converts ``list`` field values to ``tuple``.
     """
     field_names = {
-        desc["key"]: desc["field_name"] for desc in messages.get("field_description_mesgs", [])
+        desc["key"]: desc["field_name"]
+        for desc in messages.get("field_description_mesgs", [])
+        if "field_name" in desc
     }
 
     result: dict[str, list[dict[str, Any]]] = {}
-    for key, rows in messages.items():
+    for key, mesgs in messages.items():
         name = key[:-6] if key.endswith("_mesgs") else key
         if name.isdigit():
             name = f"unknown_{name}"
 
+        rows = mesgs
         if name == "field_description":
             # "key" is FIT decoder bookkeeping, not a real FIT field.
-            result[name] = [{k: v for k, v in row.items() if k != "key"} for row in rows]
-        else:
-            result[name] = [_normalize_row(row, field_names) for row in rows]
+            rows = [{k: v for k, v in row.items() if k != "key"} for row in rows]
+
+        result[name] = [_normalize_row(row, field_names) for row in rows]
 
     return result
 
@@ -164,7 +183,7 @@ def decode_fit(
     if errors:
         raise FitError(str(errors[0])) from errors[0]
 
-    return _normalize_messages(cast(Mapping[str, list[dict[str, Any]]], messages))
+    return normalize_messages(cast(Mapping[str, list[dict[str, Any]]], messages))
 
 
 def build_activity(session: dict[str, Any] | None, file_id: dict[str, Any] | None) -> Activity:
