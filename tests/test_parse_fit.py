@@ -136,10 +136,7 @@ def test_activity_parser_canonical_columns():
 
 
 def test_activity_parser_keeps_total_strokes():
-    # FIT's total_cycles field resolves dynamically to total_strokes (cycling) or
-    # total_strides (running) via fitdecode's subfield mechanism; total_strokes is a
-    # real, populated field for bike activities, distinct from the unrelated
-    # stroke_count field (which never appears in these fixtures).
+    # total_strokes is FIT's total_cycles field, subfield-resolved for cycling.
     _, laps, _ = ActivityParser().parse(EDGE_820)
     assert laps["total_strokes"].tolist() == [75]
 
@@ -255,8 +252,8 @@ def test_split_left_right_balance_noop_without_column():
 
 
 def test_split_left_right_balance_decodes_enum_quirk_values():
-    # fitdecode renders raw byte 0x80/0x7F as "right"/"mask" strings (profile quirk);
-    # confirm both are recovered rather than crashing.
+    # The FIT profile renders raw byte 0x80/0x7F as "right"/"mask" strings; confirm
+    # both are recovered rather than crashing.
     df = pd.DataFrame({"left_right_balance": ["right", "mask", 180]})
     out = split_record_balance(df)
     assert out["right_balance"].tolist() == pytest.approx([0.0, -27.0, 52.0])
@@ -264,7 +261,7 @@ def test_split_left_right_balance_decodes_enum_quirk_values():
 
 
 def test_split_left_right_balance_decodes_enum_quirk_values_100_variant():
-    # Same fitdecode quirk, but for the lap/session/segment_lap uint16 layout.
+    # Same profile quirk, but for the lap/session/segment_lap uint16 layout.
     df = pd.DataFrame({"left_right_balance": ["right", "mask", 37968]})
     out = split_left_right_balance(
         df,
@@ -307,7 +304,7 @@ def test_file_like_input():
 
 
 def test_non_fit_bytes_raise():
-    with pytest.raises(FitError, match="not a FIT file"):
+    with pytest.raises(FitError, match="not a fit file"):
         parse_fit(io.BytesIO(b"this is not a FIT file"))
 
 

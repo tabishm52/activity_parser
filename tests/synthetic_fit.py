@@ -161,11 +161,7 @@ def left_right_balance() -> bytes:
 
 
 def left_right_balance_enum_quirk() -> bytes:
-    """Records whose left_right_balance byte matches fitdecode's own enum keys.
-
-    fitdecode renders raw byte 0x80 as "right" and 0x7F as "mask" instead of
-    an int (profile quirk), unlike every other byte value.
-    """
+    """Records whose left_right_balance byte matches the FIT profile's enum keys."""
     return encode(
         [
             {
