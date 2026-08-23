@@ -123,6 +123,20 @@ def test_convert_units_keeps_missing_values_missing():
     assert pd.isna(out["speed"].iloc[1])
 
 
+def test_convert_units_scales_array_typed_column_elementwise():
+    df = pd.DataFrame({"speed_1s": [(10.0, 12.0), 20.0, None]})
+    out = convert_units(df, RECORD_UNITS)
+    assert out["speed_1s"].iloc[0] == pytest.approx((36.0, 43.2))
+    assert out["speed_1s"].iloc[1] == pytest.approx(72.0)
+    assert pd.isna(out["speed_1s"].iloc[2])
+
+
+def test_convert_units_leaves_tuple_with_non_numeric_element_untouched():
+    df = pd.DataFrame({"speed_1s": [(10.0, "bad")]})
+    out = convert_units(df, RECORD_UNITS)
+    assert out["speed_1s"].iloc[0] == (10.0, "bad")
+
+
 def test_convert_units_mapping_scales_listed_fields():
     row = {"total_distance": 5000.0, "avg_speed": 10.0, "sport": "cycling"}
     out = convert_units_mapping(row, SESSION_UNITS)

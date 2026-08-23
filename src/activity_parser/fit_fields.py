@@ -4,11 +4,12 @@ FIT stores positions in semicircles, distances in meters and speeds in m/s. This
 package normalizes those to degrees, km and km/h. Vertical rates (``avg_vam``,
 ``vertical_speed``, ...) are left in m/s.
 
-The tables are generated from the FIT profile in garmin-fit-sdk 21.212.0, covering
+The tables are transcribed from the FIT profile in garmin-fit-sdk 21.212.0, covering
 the ``record``, ``lap`` and ``session`` message types. ``tests/test_fit_fields.py``
-regenerates them and fails if they drift from the installed profile.
+checks that the installed profile's fields are covered.
 """
 
+import math
 from collections.abc import Mapping
 from typing import Any
 
@@ -63,11 +64,36 @@ SESSION_UNITS: dict[str, float] = {
 }
 
 
+def _scale_value(value: Any, factor: float) -> Any:
+    """Scales one value by ``factor``, recursing into tuples elementwise.
+
+    Missing values pass through unchanged. Raises ``TypeError`` for a value that can't
+    be scaled (e.g. a string).
+    """
+    if value is None or (isinstance(value, float) and math.isnan(value)):
+        return value
+    if isinstance(value, tuple):
+        return tuple(_scale_value(v, factor) for v in value)
+    return value * factor
+
+
+def _scale_column_elementwise(values: pd.Series, factor: float) -> pd.Series:
+    """Scales ``values`` elementwise via ``_scale_value``, all-or-nothing.
+
+    If any value in the column can't be scaled, the column is returned unchanged.
+    """
+    try:
+        return values.map(lambda v: _scale_value(v, factor))
+    except TypeError:
+        return values
+
+
 def convert_units(df: pd.DataFrame, table: Mapping[str, float]) -> pd.DataFrame:
     """Scales each of ``df``'s columns named in ``table`` by its factor.
 
     Columns absent from ``table`` are left untouched, as are columns whose values don't
-    all coerce to numeric.
+    all coerce to numeric or scale cleanly. A column that decodes to tuples (an
+    array-typed FIT field) is scaled elementwise.
     """
     df = df.copy()
 
@@ -80,6 +106,8 @@ def convert_units(df: pd.DataFrame, table: Mapping[str, float]) -> pd.DataFrame:
             values = coerce_numeric_all_or_nothing(values)
         if pd.api.types.is_numeric_dtype(values):
             df[column] = values * factor
+        else:
+            df[column] = _scale_column_elementwise(values, factor)
 
     return df
 
