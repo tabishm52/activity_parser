@@ -7,6 +7,7 @@ extensions aren't silently dropped.
 """
 
 from collections.abc import Iterable, Iterator, Mapping
+from functools import cache
 from os import PathLike
 from typing import IO, cast
 
@@ -101,22 +102,30 @@ def walk_fields(element: etree._Element) -> Iterator[tuple[FieldPath, str]]:
     yield from _walk(element, ())
 
 
+@cache
+def _split_tag(tag: str) -> FieldPathStep:
+    """Splits an lxml ``{namespace}localname`` tag into a ``FieldPath`` step."""
+    if tag.startswith("{"):
+        namespace, _, localname = tag[1:].partition("}")
+        return namespace, localname
+    return None, tag
+
+
 def _walk(element: etree._Element, path: FieldPath) -> Iterator[tuple[FieldPath, str]]:
     """Recursive implementation of ``walk_fields``; ``path`` is the walk so far."""
     for key, value in element.attrib.items():
-        qname = etree.QName(key)
-        if qname.namespace == XSI_NS and qname.localname == "type":
+        namespace, localname = _split_tag(key)
+        if namespace == XSI_NS and localname == "type":
             # xsi:type is schema-validation metadata, not activity data.
             continue
-        yield path + ((qname.namespace, "@" + qname.localname),), cast(str, value)
+        yield path + ((namespace, "@" + localname),), cast(str, value)
 
+    text = element.text
+    if text is not None and not text.isspace():
+        yield path, text
     # "*" matches only true elements, so comments are skipped without special-casing.
-    children = list(element.iterchildren("*"))
-    if element.text is not None and not element.text.isspace():
-        yield path, element.text
-    for child in children:
-        child_qname = etree.QName(child)
-        yield from _walk(child, path + ((child_qname.namespace, child_qname.localname),))
+    for child in element.iterchildren("*"):
+        yield from _walk(child, path + (_split_tag(child.tag),))
 
 
 def unknown_column_name(step: FieldPathStep) -> str:
