@@ -127,13 +127,7 @@ def multi_session() -> bytes:
 
 
 def left_right_balance() -> bytes:
-    """Records and a lap carrying left_right_balance, both flag states.
-
-    Per-record left_right_balance is a bit-packed byte: 0x80 flags the right
-    side, and the low 7 bits are that side's percentage contribution. The
-    lap-level field is the higher-precision uint16 variant (0x8000 flag,
-    0x3FFF mask, percentage x100).
-    """
+    """Records and a lap carrying left_right_balance, both flag states."""
     return encode(
         [
             {
@@ -185,12 +179,7 @@ def left_right_balance_enum_quirk() -> bytes:
 
 
 def coercion_skip() -> bytes:
-    """A record field that decodes to a tuple in one row, a scalar in others.
-
-    left_power_phase is an array field; a row with two values decodes to a
-    tuple rather than a scalar. temperature is included alongside it with a
-    genuinely missing value in one row.
-    """
+    """A record field that decodes to a tuple in one row, a scalar in others."""
     return encode(
         [
             {
@@ -218,14 +207,7 @@ def coercion_skip() -> bytes:
 
 
 def heart_rate_merge() -> bytes:
-    """Three records with device heart_rate=100; an hr stream reports 150 bpm across
-    the first two records' windows and has no samples for the third.
-
-    An hr message anchors the stream with both timestamp and event_timestamp; later hr
-    messages give only event_timestamp/filtered_bpm deltas from that anchor.
-    fractional_timestamp must be present (even at 0.0) on the anchor or garmin-fit-sdk's
-    heart-rate merging errors out.
-    """
+    """An hr stream reports 150 bpm for the first two records, none for the third."""
     return encode(
         [
             {"mesg_num": RECORD_MESG_NUM, "timestamp": at(0), "heart_rate": 100},
@@ -234,7 +216,7 @@ def heart_rate_merge() -> bytes:
             {
                 "mesg_num": HR_MESG_NUM,
                 "timestamp": at(0),
-                "fractional_timestamp": 0.0,
+                "fractional_timestamp": 0.0,  # required on the anchor or merge no-ops
                 "event_timestamp": 0.0,
                 "filtered_bpm": 150,
             },

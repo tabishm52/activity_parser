@@ -48,9 +48,8 @@ def test_every_namespace_is_used(namespace):
 
 @pytest.mark.parametrize("table_name", ALL_TABLES)
 def test_no_conflicting_converts_within_table(table_name):
-    # build_dataframe collapses same-column entries first-wins, and collisions between
-    # source fields resolve by document order — both are only safe if every entry
-    # mapping to a given column agrees on the conversion.
+    # Column collisions resolve first-wins by document order, so every entry mapping to
+    # one column must agree on its conversion.
     converts = {}
     for field in ALL_TABLES[table_name].values():
         assert converts.setdefault(field.column, field.convert) == field.convert, field.column

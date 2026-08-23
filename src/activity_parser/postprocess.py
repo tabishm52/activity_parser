@@ -36,9 +36,9 @@ def coerce_numeric_columns(df: pd.DataFrame) -> pd.DataFrame:
 def index_by_time(records: pd.DataFrame, column: str) -> pd.DataFrame:
     """Sets ``column`` as the index, dropping rows with no timestamp or a duplicate one.
 
-    If ``column`` is entirely absent (no row has any clock data at all, e.g. a GPX
-    route with no ``<time>`` elements) but rows exist, they're kept under their
-    original index rather than all being dropped as "missing".
+    If ``column`` is entirely absent (no row has any clock data at all, e.g. a GPX route
+    with no ``<time>`` elements) but rows exist, they're kept under their original index
+    rather than all being dropped as "missing".
     """
     if column not in records.columns:
         if not records.empty:
