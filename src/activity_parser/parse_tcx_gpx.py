@@ -44,14 +44,6 @@ def parse_xml_root(
     return root
 
 
-def remove_elements(root: etree._Element, *tags: str) -> None:
-    """Removes all elements matching ``tags`` from the tree."""
-    for element in root.iter(*tags):
-        parent = element.getparent()
-        if parent is not None:
-            parent.remove(element)
-
-
 def _parse_timestamp(text: str | None) -> pd.Timestamp | None:
     """Parses a single ISO8601 timestamp, or ``None`` if absent/unparseable."""
     if text is None:
@@ -221,7 +213,7 @@ def parse_tcx(
 
     # Strip Track/Trackpoint first: each Lap's walk is recursive, so without this its
     # nested Trackpoint fields would be misattributed as unrecognized Lap-level columns.
-    remove_elements(root, "{*}Track")
+    etree.strip_elements(root, "{*}Track")
     laps = build_dataframe(root.iter("{*}Lap"), TCX_LAP_FIELDS)
 
     activity = tcx_activity(root)
