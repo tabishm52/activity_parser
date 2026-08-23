@@ -337,6 +337,11 @@ def test_empty_bytes_raise_even_without_strict_xml():
 # ---------------------------------------------------------------------------
 
 
+def test_tcx_laps_do_not_leak_trackpoint_columns():
+    _, laps, _ = parse_tcx(SAMPLE_TCX)
+    assert not any("Trackpoint" in col for col in laps.columns)
+
+
 def test_parse_tcx_low_level_matches_high_level_known_columns():
     # parse_tcx already emits canonical names; ActivityParser only narrows/orders them.
     low_records, _, _ = parse_tcx(SAMPLE_TCX)
