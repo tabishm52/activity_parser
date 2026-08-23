@@ -29,14 +29,22 @@ parser = activity_parser.ActivityParser()
 Parse FIT, TCX and GPX files into normalized DataFrames:
 
 ```python
-records, laps, activity = parser.parse("path/to/fit_file.fit")
-records, laps, activity = parser.parse("path/to/gpx_file.gpx")
-records, laps, activity = parser.parse("path/to/tcx_file.tcx")
+from activity_parser import ParseError
+
+try:
+    records, laps, activity = parser.parse("path/to/fit_file.fit")
+    records, laps, activity = parser.parse("path/to/gpx_file.gpx")
+    records, laps, activity = parser.parse("path/to/tcx_file.tcx")
+except ParseError as e:
+    ...
 ```
 
 Each file is assumed to contain a single activity.
 Multiple activities/tracks (chained FIT files, multi-activity TCX, multi-track GPX) have their records/laps merged into one set of results.
 In those cases, the returned `Activity` summary reflects only the first activity/session in the file.
+
+`parse()` raises `ParseError` (`FitError` for FIT files, `XmlError` for TCX/GPX) when a file fails to parse.
+It raises `ValueError` for an unrecognized or ambiguous file type.
 
 ## Output data
 
@@ -147,6 +155,10 @@ FIT parsing wraps [`garmin-fit-sdk`](https://pypi.org/project/garmin-fit-sdk/), 
 Messages/fields that can't be resolved against the FIT profile (e.g. proprietary extensions) are kept as raw values under `unknown_<n>` names.
 Developer fields are resolved to their file-embedded names and flattened into ordinary columns alongside built-in fields.
 
+`parse_fit` and `parse_fit_raw` are the lower-level functions `ActivityParser.parse()` wraps for FIT files.
+`parse_fit` returns the same canonical `(records, laps, activity)` shape, but without column curation.
+`parse_fit_raw` returns every message type in the file as its own uncurated DataFrame, in FIT-native units (semicircles, meters, m/s).
+
 ### TCX & GPX files
 
 TCX and GPX files are parsed natively in this package using [`lxml`](https://pypi.org/project/lxml/).
@@ -160,3 +172,6 @@ The parser supports the following schema versions and extensions:
 | GPX | 1.0 / 1.1 | Garmin `TrackPointExtension` v1/v2, Cluetrust `gpxdata` |
 
 Unrecognized elements and attributes are exported as string columns named with their XML namespace in Clark notation.
+
+`parse_gpx` and `parse_tcx` are the lower-level functions `ActivityParser.parse()` wraps for these formats.
+They return the same canonical `(records, laps, activity)` shape, but without column curation.
