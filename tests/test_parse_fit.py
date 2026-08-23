@@ -18,6 +18,7 @@ from activity_parser.parse_fit_file import (
     add_fractional_columns,
     build_activity,
     coalesce_enhanced_columns,
+    first_message,
     normalize_messages,
     parse_fit,
     parse_fit_raw,
@@ -478,6 +479,21 @@ def test_developer_field_dropped_by_default_kept_with_include_all_columns():
 
     all_records, _, _ = ActivityParser(include_all_columns=True).parse(DEVELOPER_DATA)
     assert all_records["doughnuts_earned"].tolist() == [1, 2, 3]
+
+
+# ---------------------------------------------------------------------------
+# first_message: plain dicts, no fixtures
+# ---------------------------------------------------------------------------
+
+
+def test_first_message_returns_first_of_several():
+    assert first_message({"session": [{"sport": "running"}, {"sport": "cycling"}]}, "session") == {
+        "sport": "running"
+    }
+
+
+def test_first_message_none_when_key_present_but_empty():
+    assert first_message({"session": []}, "session") is None
 
 
 # ---------------------------------------------------------------------------
