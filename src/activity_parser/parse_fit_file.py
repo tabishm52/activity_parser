@@ -294,8 +294,7 @@ def parse_fit_raw(
             verification is skipped.
 
     Returns:
-        Dict mapping FIT message type name to its raw DataFrame. A message type absent
-        from the file is absent from the dict.
+        Dict mapping FIT message type name to its raw DataFrame.
 
     Raises:
         FitError: The FIT file fails to decode (e.g. invalid header, or a CRC mismatch
