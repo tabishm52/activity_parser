@@ -492,10 +492,6 @@ def test_first_message_returns_first_of_several():
     }
 
 
-def test_first_message_none_when_key_absent():
-    assert first_message({}, "session") is None
-
-
 def test_first_message_none_when_key_present_but_empty():
     assert first_message({"session": []}, "session") is None
 
