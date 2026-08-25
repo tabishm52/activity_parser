@@ -9,6 +9,8 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import TypeVar
 
+from activity_parser import ParseError
+
 T = TypeVar("T")
 
 ACTIVITY_EXTENSIONS = ("FIT", "TCX", "GPX")
@@ -50,18 +52,15 @@ def find_activity_files(directory: Path) -> list[Path]:
     return sorted(path_list)
 
 
-def parse_directory(directory: Path, task: Callable[[Path], T]) -> Iterator[tuple[Path, T]]:
+def parse_directory(
+    directory: Path, task: Callable[[Path], T], suppress_errors: bool = True
+) -> Iterator[tuple[Path, T]]:
     """Runs ``task`` over every activity file under ``directory`` in a process pool.
-
-    If ``task`` raises, that exception propagates and ends the run. In most cases, it
-    makes sense for ``task`` to catch and handle any ``ParseError`` exceptions in the
-    files it processes.
 
     Args:
         directory: Directory to search recursively, via ``find_activity_files``.
-        task: Function called with each path in a worker process. Must be a plain
-            module-level function, so that ``ProcessPoolExecutor`` can pickle it by
-            qualified name.
+        task: Function called with each path in a worker process. Must be picklable.
+        suppress_errors: If true, files that raise ``ParseError`` are silently skipped.
 
     Returns:
         An iterator of ``(path, result)``, yielded in completion order.
@@ -71,4 +70,8 @@ def parse_directory(directory: Path, task: Callable[[Path], T]) -> Iterator[tupl
         futures = {pool.submit(task, path): path for path in paths}
 
         for future in as_completed(futures):
-            yield futures[future], future.result()
+            try:
+                yield futures[future], future.result()
+            except ParseError:
+                if not suppress_errors:
+                    raise
