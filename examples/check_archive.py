@@ -22,6 +22,7 @@ class ActivityCheck:
     error: str | None
     n_records: int
     record_columns: tuple[str, ...]
+    creator: str | None
 
 
 def check_activity(
@@ -51,16 +52,20 @@ def check_activity(
     assert file_type is not None  # parse_directory only calls this on matched paths
 
     try:
-        records, _, _ = strict_parser.parse(path)
-        return ActivityCheck(path, file_type, True, None, len(records), tuple(records.columns))
+        records, _, activity = strict_parser.parse(path)
+        return ActivityCheck(
+            path, file_type, True, None, len(records), tuple(records.columns), activity.creator
+        )
     except ParseError:
         pass
 
     try:
-        records, _, _ = lenient_parser.parse(path)
-        return ActivityCheck(path, file_type, False, None, len(records), tuple(records.columns))
+        records, _, activity = lenient_parser.parse(path)
+        return ActivityCheck(
+            path, file_type, False, None, len(records), tuple(records.columns), activity.creator
+        )
     except ParseError as error:
-        return ActivityCheck(path, file_type, False, str(error), 0, ())
+        return ActivityCheck(path, file_type, False, str(error), 0, (), None)
 
 
 def print_type_report(file_type: str, files: pd.DataFrame) -> None:
@@ -89,6 +94,11 @@ def print_type_report(file_type: str, files: pd.DataFrame) -> None:
         for column, count in columns.items():
             print(f"  {column:<20} {count:>5} files ({count / ok:.0%})")
 
+        creators = files.loc[files["parse_ok"], "creator"].value_counts(dropna=False)
+        print("\nCreators:")
+        for creator, count in creators.items():
+            print(f"  {str(creator):<20} {count:>5} files ({count / ok:.0%})")
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -108,7 +118,7 @@ def main() -> None:
         check_activity, strict_parser=strict_parser, lenient_parser=lenient_parser
     )
 
-    checks = [check for _, check in parse_directory(args.directory, task)]
+    checks = [check for _, check in parse_directory(args.directory, task, suppress_errors=False)]
 
     files = pd.DataFrame(checks, columns=[f.name for f in fields(ActivityCheck)])
     files["parse_ok"] = files["error"].isna()
