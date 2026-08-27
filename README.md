@@ -136,6 +136,13 @@ Values come from the file's own summary fields, never computed/derived from reco
 
 (\*) GPX's `start_time` comes from `metadata/time`, which is technically the file's export time rather than the activity's start.
 
+## Examples
+
+[`examples/`](examples/) has runnable scripts for processing a directory of activity files, built on a shared `parse_directory()` helper:
+
+- `check_archive.py <directory> [--all-columns]` — a health check, broken down by file type: parsing failures, record column coverage, and file creators.
+- `summarize_archive.py <directory>` — a per-sport summary rollup, illustrating how a typical downstream analysis might use the library's output.
+
 ## Parser notes
 
 ### FIT files
