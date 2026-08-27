@@ -1,7 +1,7 @@
 """Walks a directory and parses every activity file in parallel.
 
 FIT decoding and XML parsing are both CPU-bound, so a process pool is a real speedup
-despite the cost of pickling arguments and results across process boundaries.
+despite the startup cost and pickling arguments and results across process boundaries.
 """
 
 from collections.abc import Callable, Iterator
@@ -19,9 +19,8 @@ ACTIVITY_EXTENSIONS = ("FIT", "TCX", "GPX")
 def activity_file_type(path: Path) -> str | None:
     """Returns ``path``'s activity file type (``FIT``, ``TCX``, or ``GPX``), if any.
 
-    Detection is suffix-based and case-insensitive, since device exports commonly use
-    uppercase extensions (e.g. Garmin's ``.FIT``) and others lowercase. A ``.gz``
-    wrapper is looked through. The returned type is always upper case, for reports.
+    Detection is suffix-based and case-insensitive. A ``.gz`` wrapper is looked through.
+    The returned type is always upper case.
 
     Args:
         path: Path to inspect. Not required to exist.
