@@ -111,10 +111,15 @@ def test_parse_edge_820_activity_values():
     _, _, activity = parse_fit(EDGE_820)
     assert activity.sport == "cycling"
     assert activity.start_time == pd.Timestamp("2017-06-12T16:10:15Z")
+    assert activity.total_timer_time == pytest.approx(64.524)
     assert activity.total_distance == pytest.approx(0.45712)
+    assert activity.total_ascent == 0
+    assert activity.total_descent == 0
     assert activity.total_calories == 8
     assert activity.avg_heart_rate == 116
     assert activity.max_heart_rate == 121
+    assert activity.avg_cadence == 68
+    assert activity.max_cadence == 71
     assert activity.creator == "garmin edge_820"
 
 
@@ -383,6 +388,12 @@ def test_parse_fit_laps_only_fixture():
     assert activity.creator == "garmin 1000"
 
 
+def test_parse_fit_reads_avg_max_power():
+    _, _, activity = parse_fit(io.BytesIO(synthetic_fit.session_with_power()))
+    assert activity.avg_power == 180
+    assert activity.max_power == 320
+
+
 def test_parse_fit_multi_session_uses_first_session_and_file_id():
     _, _, activity = parse_fit(io.BytesIO(synthetic_fit.multi_session()))
     assert activity.sport == "running"
@@ -461,7 +472,21 @@ def test_parse_fit_raw_does_not_merge_heart_rate_stream():
 def test_parse_fenix_5_run_activity_values():
     _, _, activity = parse_fit(FENIX_5_RUN)
     assert activity.sport == "running"
+    assert activity.total_timer_time == pytest.approx(56.887)
+    assert activity.total_ascent == 2
+    assert activity.total_descent == 0
+    assert activity.avg_cadence == 83
+    assert activity.max_cadence == 95
     assert activity.creator == "garmin fenix5"
+
+
+def test_parse_fenix_5_bike_activity_values():
+    _, _, activity = parse_fit(FENIX_5)
+    assert activity.total_timer_time == pytest.approx(60.363)
+    assert activity.total_ascent == 0
+    assert activity.total_descent == 4
+    assert activity.avg_cadence is None
+    assert activity.max_cadence is None
 
 
 def test_activity_parser_fenix_5_run_canonical_columns():
@@ -476,6 +501,14 @@ def test_developer_field_kept_by_parse_fit():
     records, _, activity = parse_fit(DEVELOPER_DATA)
     assert records["doughnuts_earned"].tolist() == [1, 2, 3]
     assert activity.creator == "dynastream 9001"
+    # No session message at all, so the seven new fields stay None rather than 0.
+    assert activity.total_timer_time is None
+    assert activity.total_ascent is None
+    assert activity.total_descent is None
+    assert activity.avg_power is None
+    assert activity.max_power is None
+    assert activity.avg_cadence is None
+    assert activity.max_cadence is None
 
 
 def test_developer_field_kept_in_raw_parse():
@@ -605,10 +638,17 @@ def test_build_activity_reads_session_fields():
         session={
             "sport": "running",
             "total_elapsed_time": 60.0,
+            "total_timer_time": 55.0,
             "total_distance": 1.0,
+            "total_ascent": 10,
+            "total_descent": 8,
             "total_calories": 5,
             "avg_heart_rate": 90,
             "max_heart_rate": 112,
+            "avg_power": 180,
+            "max_power": 320,
+            "avg_cadence": 82,
+            "max_cadence": 95,
             "avg_speed": 9.9,
             "max_speed": 13.1,
         },
@@ -616,10 +656,17 @@ def test_build_activity_reads_session_fields():
     )
     assert activity.sport == "running"
     assert activity.total_elapsed_time == 60.0
+    assert activity.total_timer_time == 55.0
     assert activity.total_distance == 1.0
+    assert activity.total_ascent == 10
+    assert activity.total_descent == 8
     assert activity.total_calories == 5
     assert activity.avg_heart_rate == 90
     assert activity.max_heart_rate == 112
+    assert activity.avg_power == 180
+    assert activity.max_power == 320
+    assert activity.avg_cadence == 82
+    assert activity.max_cadence == 95
     assert activity.avg_speed == 9.9
     assert activity.max_speed == 13.1
 

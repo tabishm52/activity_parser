@@ -90,6 +90,30 @@ def laps_only() -> bytes:
     )
 
 
+def session_with_power() -> bytes:
+    """A session carrying avg_power/max_power."""
+    return encode(
+        [
+            {
+                "mesg_num": FILE_ID_MESG_NUM,
+                "type": "activity",
+                "manufacturer": "garmin",
+                "product": 1000,
+                "time_created": T0,
+            },
+            {
+                "mesg_num": SESSION_MESG_NUM,
+                "timestamp": at(60),
+                "start_time": T0,
+                "sport": "cycling",
+                "total_elapsed_time": 60.0,
+                "avg_power": 180,
+                "max_power": 320,
+            },
+        ]
+    )
+
+
 def multi_session() -> bytes:
     """Two file_id messages and two session messages."""
     return encode(
