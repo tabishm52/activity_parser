@@ -124,7 +124,7 @@ Values come from the file's own summary fields, never computed/derived from reco
 
 | Field | Unit | FIT | TCX | GPX |
 |---|---|:-:|:-:|:-:|
-| `sport` | — | Yes | Yes | — |
+| `sport` | — | Yes | Yes | Yes |
 | `start_time` | — | Yes | Yes | Yes (\*) |
 | `total_elapsed_time` | seconds | Yes | — | — |
 | `total_distance` | km | Yes | — | — |
@@ -135,6 +135,9 @@ Values come from the file's own summary fields, never computed/derived from reco
 | `notes` | — | — | Yes | Yes |
 
 (\*) GPX's `start_time` comes from `metadata/time`, which is technically the file's export time rather than the activity's start.
+
+`sport` is normalized onto the FIT SDK profile's sport vocabulary for all three formats.
+An unrecognized value is passed through unchanged.
 
 ## Examples
 

@@ -40,6 +40,8 @@ METADATA_GPX = GPX_FILES / "metadata.gpx"
 MULTI_ACTIVITY_TCX = TCX_FILES / "multi_activity.tcx"
 MULTI_TRACK_GPX = GPX_FILES / "multi_track.gpx"
 NO_ACTIVITY_TCX = TCX_FILES / "no_activity.tcx"
+SPORT_OTHER_TCX = TCX_FILES / "sport_other.tcx"
+STRAVA_TYPE_GPX = GPX_FILES / "strava_type.gpx"
 
 
 # ---------------------------------------------------------------------------
@@ -89,13 +91,13 @@ def test_tcx_laps():
 
 def test_tcx_activity():
     _, _, activity = ActivityParser().parse(SAMPLE_TCX)
-    assert activity.sport == "Biking"
+    assert activity.sport == "cycling"
     assert activity.start_time == pd.Timestamp("2026-01-05T08:00:00Z")
 
 
 def test_tcx_activity_creator_and_notes():
     _, _, activity = ActivityParser().parse(ACTIVITY_METADATA_TCX)
-    assert activity.sport == "Running"
+    assert activity.sport == "running"
     assert activity.creator == "Garmin Forerunner 945"
     assert activity.notes == "Morning run"
 
@@ -188,12 +190,17 @@ def test_tcx_lx_namespace_reset_does_not_overreach():
     assert low_laps["NotARealField"].tolist() == ["99"]
 
 
+def test_tcx_activity_sport_other_maps_to_generic():
+    _, _, activity = ActivityParser().parse(SPORT_OTHER_TCX)
+    assert activity.sport == "generic"
+
+
 def test_tcx_multi_activity_merges_records_and_laps_first_activity_wins_summary():
     # Records/laps merge from both Activities; the summary reflects only the first.
     records, laps, activity = ActivityParser().parse(MULTI_ACTIVITY_TCX)
     assert records["heart_rate"].tolist() == [100, 140]
     assert laps["total_distance"].tolist() == pytest.approx([0.5, 1.0])
-    assert activity.sport == "Biking"
+    assert activity.sport == "cycling"
     assert activity.start_time == pd.Timestamp("2026-01-05T08:00:00Z")
 
 
@@ -223,6 +230,7 @@ def test_gpx_records_values():
 
 def test_gpx_activity():
     _, _, activity = ActivityParser().parse(SAMPLE_GPX)
+    assert activity.sport == "cycling"
     assert activity.creator == "activity_parser tests"
     assert activity.start_time == pd.Timestamp("2026-01-05T08:00:00Z")
 
@@ -231,6 +239,12 @@ def test_gpx_activity_desc():
     _, _, activity = ActivityParser().parse(METADATA_GPX)
     assert activity.creator == "Garmin Connect"
     assert activity.notes == "Evening ride"
+
+
+def test_gpx_activity_sport_from_strava_display_name():
+    # "Ride" is a Strava display name, not a FIT-shaped value.
+    _, _, activity = ActivityParser().parse(STRAVA_TYPE_GPX)
+    assert activity.sport == "cycling"
 
 
 def test_gpx_multiple_track_segments():

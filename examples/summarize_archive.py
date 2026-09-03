@@ -75,7 +75,7 @@ def main() -> None:
         return
     print(f"Date range: {df['start_time'].min()} to {df['start_time'].max()}")
 
-    # dropna=False since GPX never records a sport
+    # dropna=False since a missing sport value is still valid
     by_sport = df.groupby("sport", dropna=False)
     summary = pd.DataFrame(
         {
