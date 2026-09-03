@@ -127,9 +127,13 @@ Values come from the file's own summary fields, never computed/derived from reco
 | `sport` | — | Yes | Yes | Yes |
 | `start_time` | — | Yes | Yes | Yes (\*) |
 | `total_elapsed_time` | seconds | Yes | — | — |
+| `total_timer_time` | seconds | Yes | — | — |
 | `total_distance` | km | Yes | — | — |
+| `total_ascent`, `total_descent` | m | Yes | — | — |
 | `total_calories` | kcal | Yes | — | — |
 | `avg_heart_rate`, `max_heart_rate` | bpm | Yes | — | — |
+| `avg_power`, `max_power` | W | Yes | — | — |
+| `avg_cadence`, `max_cadence` | rpm | Yes | — | — |
 | `avg_speed`, `max_speed` | km/h | Yes | — | — |
 | `creator` | — | Yes | Yes | Yes |
 | `notes` | — | — | Yes | Yes |

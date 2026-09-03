@@ -93,6 +93,10 @@ def test_tcx_activity():
     _, _, activity = ActivityParser().parse(SAMPLE_TCX)
     assert activity.sport == "cycling"
     assert activity.start_time == pd.Timestamp("2026-01-05T08:00:00Z")
+    # These fields are not populated for a TCX file.
+    assert activity.total_timer_time is None
+    assert activity.avg_power is None
+    assert activity.avg_cadence is None
 
 
 def test_tcx_activity_creator_and_notes():
@@ -233,6 +237,10 @@ def test_gpx_activity():
     assert activity.sport == "cycling"
     assert activity.creator == "activity_parser tests"
     assert activity.start_time == pd.Timestamp("2026-01-05T08:00:00Z")
+    # These fields are not populated for a GPX file.
+    assert activity.total_timer_time is None
+    assert activity.avg_power is None
+    assert activity.avg_cadence is None
 
 
 def test_gpx_activity_desc():
