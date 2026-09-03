@@ -17,6 +17,7 @@ from lxml import etree
 from .exceptions import XmlError
 from .output import Activity
 from .postprocess import index_by_time
+from .sports import normalize_sport
 from .xml_fields import (
     GPX_TRACKPOINT_FIELDS,
     TCX_LAP_FIELDS,
@@ -68,7 +69,7 @@ def tcx_activity(root: etree._Element) -> Activity:
 
     creator_el = activity_el.find("{*}Creator")
     return Activity(
-        sport=activity_el.get("Sport"),
+        sport=normalize_sport(activity_el.get("Sport")),
         start_time=_parse_timestamp(_find_text(activity_el, "{*}Id")),
         creator=_find_text(creator_el, "{*}Name"),
         notes=_find_text(activity_el, "{*}Notes"),
@@ -76,9 +77,11 @@ def tcx_activity(root: etree._Element) -> Activity:
 
 
 def gpx_activity(root: etree._Element) -> Activity:
-    """Builds an ``Activity`` summary from a GPX file's root/``metadata`` elements."""
+    """Builds an ``Activity`` summary from a GPX file's root/``metadata``/``trk``."""
     metadata_el = root.find("{*}metadata")
+    trk_el = root.find("{*}trk")
     return Activity(
+        sport=normalize_sport(_find_text(trk_el, "{*}type")),
         start_time=_parse_timestamp(_find_text(metadata_el, "{*}time")),
         creator=root.get("creator"),
         notes=_find_text(metadata_el, "{*}desc"),
