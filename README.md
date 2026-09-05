@@ -119,29 +119,30 @@ Fields marked with (\*) are exporter-dependent.
 ### Activity
 
 `activity` is an `Activity` dataclass instance: a small file-level summary.
-Fields are `None` when the source format/file doesn't record them.
-Values come from the file's own summary fields, never computed/derived from records or laps.
 
 | Field | Unit | FIT | TCX | GPX |
 |---|---|:-:|:-:|:-:|
-| `sport` | — | Yes | Yes | Yes |
-| `start_time` | — | Yes | Yes | Yes (\*) |
-| `total_elapsed_time` | seconds | Yes | — | — |
+| `sport` | — | Yes | Yes [1] | Yes [1] |
+| `start_time` | — | Yes | Yes | Yes [2] |
+| `total_elapsed_time` | seconds | Yes | Yes | Yes |
 | `total_timer_time` | seconds | Yes | — | — |
-| `total_distance` | km | Yes | — | — |
+| `total_distance` | km | Yes | Yes | Yes |
 | `total_ascent`, `total_descent` | m | Yes | — | — |
-| `total_calories` | kcal | Yes | — | — |
-| `avg_heart_rate`, `max_heart_rate` | bpm | Yes | — | — |
-| `avg_power`, `max_power` | W | Yes | — | — |
-| `avg_cadence`, `max_cadence` | rpm | Yes | — | — |
-| `avg_speed`, `max_speed` | km/h | Yes | — | — |
+| `total_calories` | kcal | Yes | Yes | — |
+| `avg_heart_rate`, `max_heart_rate` | bpm | Yes | Yes | Yes |
+| `avg_power`, `max_power` | W | Yes | Yes | Yes |
+| `avg_cadence`, `max_cadence` | rpm | Yes | Yes | Yes |
+| `avg_speed`, `max_speed` | km/h | Yes | Yes [3] | Yes [3] |
 | `creator` | — | Yes | Yes | Yes |
 | `notes` | — | — | Yes | Yes |
 
-(\*) GPX's `start_time` comes from `metadata/time`, which is technically the file's export time rather than the activity's start.
+Fields are `None` when the source format/file doesn't record them.
+Many TCX/GPX fields are computed from record and lap data since they are not provided as activity-level summary fields by the file format.
 
-`sport` is normalized onto the FIT SDK profile's sport vocabulary for all three formats.
-An unrecognized value is passed through unchanged.
+**Notes:**
+1. TCX/GPX `sport` is normalized onto FIT's sport vocabulary; an unrecognized value is passed through unchanged.
+2. GPX `start_time` comes from `metadata/time`, which is technically the file's export time rather than the activity's start.
+3. TCX/GPX `avg_speed` divides by *elapsed* time, whereas FIT divides by *timer* time.
 
 ## Examples
 

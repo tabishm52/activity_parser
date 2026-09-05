@@ -7,7 +7,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from activity_parser import ActivityParser, XmlError
+from activity_parser import Activity, ActivityParser, XmlError
 from activity_parser.parse_tcx_gpx import parse_gpx, parse_tcx
 
 FILES = Path(__file__).parent / "files"
@@ -93,10 +93,22 @@ def test_tcx_activity():
     _, _, activity = ActivityParser().parse(SAMPLE_TCX)
     assert activity.sport == "cycling"
     assert activity.start_time == pd.Timestamp("2026-01-05T08:00:00Z")
-    # These fields are not populated for a TCX file.
+    # 2 laps: elapsed time and distance are lap sums; calories too.
+    assert activity.total_elapsed_time == 5.0
     assert activity.total_timer_time is None
-    assert activity.avg_power is None
-    assert activity.avg_cadence is None
+    assert activity.total_distance == 0.04
+    assert activity.total_ascent is None
+    assert activity.total_descent is None
+    assert activity.total_calories == 17
+    assert activity.avg_heart_rate == 102
+    assert activity.max_heart_rate == 104
+    # From the TPX Watts/Cadence samples, deduped on the repeated timestamp.
+    assert activity.avg_power == 220
+    assert activity.max_power == 240
+    assert activity.avg_cadence == 82
+    assert activity.max_cadence == 84
+    assert activity.avg_speed == 28.8
+    assert activity.max_speed == 36.0
 
 
 def test_tcx_activity_creator_and_notes():
@@ -181,6 +193,15 @@ def test_tcx_laps_only_file_has_empty_records():
     assert laps["total_distance"].tolist() == pytest.approx([5.0])
 
 
+def test_tcx_laps_only_activity_derives_from_the_single_lap():
+    # No records, so everything here comes from the single lap.
+    _, _, activity = ActivityParser().parse(LAPS_ONLY_TCX)
+    assert activity.total_elapsed_time == 1800.0
+    assert activity.total_distance == 5.0
+    assert activity.total_calories == 200
+    assert activity.avg_speed == 10.0
+
+
 def test_tcx_lx_namespace_reset_still_resolves():
     # TrainerRoad resets AvgSpeed to no namespace; it must still resolve via LX.
     _, laps, _ = ActivityParser().parse(LX_NAMESPACE_RESET_TCX)
@@ -235,12 +256,24 @@ def test_gpx_records_values():
 def test_gpx_activity():
     _, _, activity = ActivityParser().parse(SAMPLE_GPX)
     assert activity.sport == "cycling"
-    assert activity.creator == "activity_parser tests"
     assert activity.start_time == pd.Timestamp("2026-01-05T08:00:00Z")
-    # These fields are not populated for a GPX file.
+    # Records span 2 seconds; HR/power/cadence come from the gpxtpx samples, deduped on
+    # the repeated timestamp.
+    assert activity.total_elapsed_time == 2.0
     assert activity.total_timer_time is None
-    assert activity.avg_power is None
-    assert activity.avg_cadence is None
+    # No <distance> in this file and no laps, so distance & avg_speed can't be derived.
+    assert activity.total_distance is None
+    assert activity.total_ascent is None
+    assert activity.total_descent is None
+    assert activity.avg_heart_rate == 101
+    assert activity.max_heart_rate == 102
+    assert activity.avg_power == 210
+    assert activity.max_power == 220
+    assert activity.avg_cadence == 81
+    assert activity.max_cadence == 82
+    assert activity.avg_speed is None
+    assert activity.max_speed == 19.44
+    assert activity.creator == "activity_parser tests"
 
 
 def test_gpx_activity_desc():
@@ -275,6 +308,12 @@ def test_gpx_route_with_no_time_anywhere_keeps_all_rows():
     assert records["altitude"].tolist() == pytest.approx([10.0, 11.0, 12.0])
 
 
+def test_gpx_route_with_no_time_anywhere_derives_nothing():
+    # No timestamps at all, so there's no time span to derive from.
+    _, _, activity = ActivityParser().parse(ROUTE_NO_TIME_GPX)
+    assert activity == Activity(creator="activity_parser tests")
+
+
 def test_gpx_non_numeric_speed_passed_through():
     # A non-numeric speed skips coercion; unit conversion then skips it too, unchanged.
     records, _, _ = ActivityParser().parse(BAD_SPEED_GPX)
@@ -282,6 +321,15 @@ def test_gpx_non_numeric_speed_passed_through():
     assert records["speed"].tolist() == ["5.0", "n/a", "5.4"]
     # Other columns still coerce and convert normally
     assert records["heart_rate"].tolist() == [100, 101, 102]
+
+
+def test_gpx_non_numeric_speed_derives_no_max_speed():
+    # max_speed is None here, not the string "5.4".
+    _, _, activity = ActivityParser().parse(BAD_SPEED_GPX)
+    assert activity.total_elapsed_time == 2.0
+    assert activity.avg_heart_rate == 101
+    assert activity.max_heart_rate == 102
+    assert activity.max_speed is None
 
 
 def test_gpx_mixed_offset_times():
@@ -316,6 +364,14 @@ def test_gpx_cluetrust_gpxdata_extension():
     assert records["cadence"].tolist() == [80, 81]
     assert records["temperature"].tolist() == [19, 19]
     assert records["distance"].tolist() == pytest.approx([0.0, 0.01])
+
+
+def test_gpx_cluetrust_gpxdata_activity_uses_records_distance_fallback():
+    # No laps in GPX, so total_distance falls back to the gpxdata distance column.
+    _, _, activity = ActivityParser().parse(GPXDATA_GPX)
+    assert activity.total_elapsed_time == 1.0
+    assert activity.total_distance == pytest.approx(0.01)
+    assert activity.avg_speed == pytest.approx(36.0)
 
 
 def test_gpx_unknown_extension_kept_as_namespaced_string():

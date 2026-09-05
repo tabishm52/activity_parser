@@ -118,6 +118,9 @@ def test_parse_edge_820_activity_values():
     assert activity.total_calories == 8
     assert activity.avg_heart_rate == 116
     assert activity.max_heart_rate == 121
+    # No power data in this file's session, records, or laps.
+    assert activity.avg_power is None
+    assert activity.max_power is None
     assert activity.avg_cadence == 68
     assert activity.max_cadence == 71
     assert activity.creator == "garmin edge_820"
@@ -500,15 +503,19 @@ def test_activity_parser_fenix_5_run_canonical_columns():
 def test_developer_field_kept_by_parse_fit():
     records, _, activity = parse_fit(DEVELOPER_DATA)
     assert records["doughnuts_earned"].tolist() == [1, 2, 3]
-    assert activity.creator == "dynastream 9001"
-    # No session message at all, so the seven new fields stay None rather than 0.
+    # No session message at all, so everything below comes from records.
     assert activity.total_timer_time is None
+    assert activity.total_distance == pytest.approx(3.2)
     assert activity.total_ascent is None
     assert activity.total_descent is None
+    assert activity.avg_heart_rate == pytest.approx(142.333, abs=1e-3)
+    assert activity.max_heart_rate == 144
+    # No power column to derive avg_power/max_power from.
     assert activity.avg_power is None
     assert activity.max_power is None
-    assert activity.avg_cadence is None
-    assert activity.max_cadence is None
+    assert activity.avg_cadence == 90
+    assert activity.max_cadence == 92
+    assert activity.creator == "dynastream 9001"
 
 
 def test_developer_field_kept_in_raw_parse():

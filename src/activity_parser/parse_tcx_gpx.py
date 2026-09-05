@@ -14,6 +14,7 @@ from typing import IO, cast
 import pandas as pd
 from lxml import etree
 
+from .derive import fill_activity
 from .exceptions import XmlError
 from .output import Activity
 from .postprocess import index_by_time
@@ -219,7 +220,7 @@ def parse_tcx(
     etree.strip_elements(root, "{*}Track")
     laps = build_dataframe(root.iter("{*}Lap"), TCX_LAP_FIELDS)
 
-    activity = tcx_activity(root)
+    activity = fill_activity(tcx_activity(root), records, laps)
 
     return records, laps, activity
 
@@ -257,6 +258,6 @@ def parse_gpx(
     records = build_dataframe(root.iter("{*}trkpt"), GPX_TRACKPOINT_FIELDS)
     records = index_by_time(records, "time")
 
-    activity = gpx_activity(root)
+    activity = fill_activity(gpx_activity(root), records, pd.DataFrame())
 
     return records, pd.DataFrame(), activity
