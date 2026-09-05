@@ -111,10 +111,10 @@ def test_check_activity_falls_back_to_lenient_parsing(tmp_path, make_bad_file):
     assert check.n_records >= 1
 
 
-def test_summarize_activity_derives_duration_and_distance():
+def test_summarize_activity_reads_elapsed_time_and_distance_off_activity():
     row = summarize_activity(FIT_FILES / "garmin-fenix-5-bike.fit")
-    assert row.duration_s is not None and row.duration_s > 0
-    assert row.distance_km is not None and row.distance_km > 0
+    assert row.total_elapsed_time is not None and row.total_elapsed_time > 0
+    assert row.total_distance is not None and row.total_distance > 0
 
 
 def test_summarize_activity_raises_on_unparseable_file(tmp_path):
@@ -125,15 +125,15 @@ def test_summarize_activity_raises_on_unparseable_file(tmp_path):
         summarize_activity(bad)
 
 
-def test_summarize_activity_handles_missing_timestamp_index():
+def test_summarize_activity_leaves_elapsed_time_none_without_timestamp_index():
     # DeveloperData.fit has no timestamp field, so records keeps a plain RangeIndex.
     row = summarize_activity(FIT_FILES / "DeveloperData.fit")
-    assert row.duration_s is None
-    assert row.distance_km is not None and row.distance_km > 0
+    assert row.total_elapsed_time is None
+    assert row.total_distance is not None and row.total_distance > 0
 
 
 def test_summarize_activity_leaves_distance_none_without_distance_column():
     # Plain GPX has no native per-point distance field, so there's no "distance" column.
     row = summarize_activity(GPX_FILES / "sample.gpx")
-    assert row.distance_km is None
-    assert row.duration_s is not None and row.duration_s > 0
+    assert row.total_distance is None
+    assert row.total_elapsed_time is not None and row.total_elapsed_time > 0

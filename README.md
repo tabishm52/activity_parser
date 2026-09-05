@@ -149,7 +149,7 @@ Many TCX/GPX fields are computed from record and lap data since they are not pro
 [`examples/`](examples/) has runnable scripts for processing a directory of activity files, built on a shared `parse_directory()` helper:
 
 - `check_archive.py <directory> [--all-columns]` — a health check, broken down by file type: parsing failures, record column coverage, and file creators.
-- `summarize_archive.py <directory>` — a per-sport summary rollup, illustrating how a typical downstream analysis might use the library's output.
+- `summarize_archive.py <directory>` — a per-sport summary rollup, displaying key metrics across the archive.
 
 ## Parser notes
 
