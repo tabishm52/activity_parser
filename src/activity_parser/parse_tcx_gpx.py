@@ -191,7 +191,9 @@ def parse_tcx(
 
     Known elements/attributes are converted to typed, canonically-named columns.
     Unknown elements/attributes are returned under a namespace-qualified name, e.g.
-    ``{namespace}localname``.
+    ``{namespace}localname``. The returned ``Activity`` is built from the file's summary
+    fields, with any it doesn't report filled in by calculating from records and laps
+    where practical.
 
     Assumes that the TCX file is all one activity. If a file has multiple ``Activity``
     elements, only the first is used to build the returned ``Activity`` summary; records
@@ -233,7 +235,9 @@ def parse_gpx(
 
     Known elements/attributes are converted to typed, canonically-named columns.
     Unknown elements/attributes are returned under a namespace-qualified name, e.g.
-    ``{namespace}localname``.
+    ``{namespace}localname``. The returned ``Activity`` is built from the file's summary
+    fields, with any it doesn't report filled in by calculating from records and laps
+    where practical.
 
     Assumes that the GPX file is all one activity. Files with multiple tracks will have
     their points merged into one set of records. Waypoints and routes in the GPX file

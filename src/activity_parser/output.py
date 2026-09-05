@@ -62,8 +62,9 @@ DEFAULT_LAP_COLUMNS: tuple[str, ...] = (
 class Activity:
     """File-level summary, present across FIT/TCX/GPX.
 
-    Fields are derived from the source file's relevant summary fields, or derived from
-    record and lap data. Fields are ``None`` when neither are available.
+    Fields are populated from the source file's summary fields where reported, or
+    calculated from records and laps where practical. Fields are ``None`` when neither
+    is available.
     """
 
     sport: str | None = None

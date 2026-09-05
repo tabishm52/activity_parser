@@ -261,7 +261,9 @@ def parse_fit(
     """Loads a FIT activity into Pandas DataFrames.
 
     Known fields are converted to typed, canonically-named columns. Unknown fields are
-    kept under an ``unknown_<n>`` name.
+    kept under an ``unknown_<n>`` name. The ``session`` and ``file_id`` messages are
+    summarized into the returned ``Activity``, with any field they don't report filled
+    in by calculating from records and laps where practical.
 
     Assumes that the FIT file is all one activity, i.e. chained FIT files will be
     merged into one set of return values. If a file has more than one ``session`` or
