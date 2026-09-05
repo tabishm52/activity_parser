@@ -71,9 +71,9 @@ def fill_activity(activity: Activity, records: pd.DataFrame, laps: pd.DataFrame)
         _aggregate(laps, "total_distance", "sum"), _range(records, "distance")
     )
 
-    # Divides by elapsed time, whereas FIT's avg_speed divides by timer time
+    # Prefer timer time (FIT's convention) when calculating avg_speed.
     distance = _coalesce(activity.total_distance, total_distance)
-    elapsed = _coalesce(activity.total_elapsed_time, total_elapsed_time)
+    elapsed = _coalesce(activity.total_timer_time, activity.total_elapsed_time, total_elapsed_time)
     avg_speed = distance / (elapsed / 3600) if distance is not None and elapsed else None
 
     derived: dict[str, float | None] = {
@@ -81,23 +81,14 @@ def fill_activity(activity: Activity, records: pd.DataFrame, laps: pd.DataFrame)
         "total_distance": total_distance,
         "total_calories": _aggregate(laps, "total_calories", "sum"),
         "avg_heart_rate": _aggregate(records, "heart_rate", "mean"),
-        # Prefer max over records, fall back to max over laps
-        "max_heart_rate": _coalesce(
-            _aggregate(records, "heart_rate", "max"), _aggregate(laps, "max_heart_rate", "max")
-        ),
-        "max_speed": _coalesce(
-            _aggregate(records, "speed", "max"), _aggregate(laps, "max_speed", "max")
-        ),
+        "max_heart_rate": _aggregate(records, "heart_rate", "max"),
+        "max_speed": _aggregate(records, "speed", "max"),
         "avg_speed": avg_speed,
-        # avg_power keeps zero (coasting) samples; avg_cadence drops them (matching FIT)
+        # avg_power keeps zero (coasting) samples; avg_cadence drops them (matching FIT).
         "avg_power": _aggregate(records, "power", "mean"),
-        "max_power": _coalesce(
-            _aggregate(records, "power", "max"), _aggregate(laps, "max_power", "max")
-        ),
+        "max_power": _aggregate(records, "power", "max"),
         "avg_cadence": _aggregate(records, "cadence", "mean", skip_zeros=True),
-        "max_cadence": _coalesce(
-            _aggregate(records, "cadence", "max"), _aggregate(laps, "max_cadence", "max")
-        ),
+        "max_cadence": _aggregate(records, "cadence", "max"),
     }
 
     to_fill = {
@@ -106,4 +97,4 @@ def fill_activity(activity: Activity, records: pd.DataFrame, laps: pd.DataFrame)
         if getattr(activity, field) is None and value is not None
     }
 
-    return dataclasses.replace(activity, **to_fill) if to_fill else activity
+    return dataclasses.replace(activity, **to_fill)

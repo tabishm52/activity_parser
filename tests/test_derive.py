@@ -18,11 +18,12 @@ def test_avg_power_keeps_zero_samples_avg_cadence_drops_them():
     assert activity.avg_cadence == 82.0
 
 
-def test_fill_activity_uses_lap_fallback_when_records_are_empty():
+def test_fill_activity_ignores_lap_level_sensor_summaries():
+    # A lap sensor summary can silently be 0 when unpaired; only records are trusted.
     laps = pd.DataFrame({"max_heart_rate": [150.0, 160.0], "max_speed": [30.0, 25.0]})
     result = fill_activity(Activity(), pd.DataFrame(), laps)
-    assert result.max_heart_rate == 160
-    assert result.max_speed == 30
+    assert result.max_heart_rate is None
+    assert result.max_speed is None
 
 
 def test_fill_activity_all_missing_column_sums_to_none_not_zero():
