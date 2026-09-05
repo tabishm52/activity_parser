@@ -14,6 +14,7 @@ from typing import IO, TYPE_CHECKING, Any, cast
 import pandas as pd
 from garmin_fit_sdk import Decoder, Profile, Stream
 
+from .derive import fill_activity
 from .exceptions import FitError
 from .fit_fields import LAP_UNITS, RECORD_UNITS, SESSION_UNITS, convert_units, convert_units_mapping
 from .output import Activity
@@ -261,7 +262,8 @@ def parse_fit(
 
     Known fields are converted to typed, canonically-named columns. Unknown fields are
     kept under an ``unknown_<n>`` name. The ``session`` and ``file_id`` messages are
-    summarized into the returned ``Activity``; all other message types are discarded.
+    summarized into the returned ``Activity``, with any field they don't report filled
+    in by calculating from records and laps where practical.
 
     Assumes that the FIT file is all one activity, i.e. chained FIT files will be
     merged into one set of return values. If a file has more than one ``session`` or
@@ -313,6 +315,7 @@ def parse_fit(
     )
 
     activity = build_activity(convert_units_mapping(session or {}, SESSION_UNITS), file_id)
+    activity = fill_activity(activity, records, laps)
 
     return records, laps, activity
 
