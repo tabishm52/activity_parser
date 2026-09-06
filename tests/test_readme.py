@@ -1,4 +1,4 @@
-"""Keeps README.md's tables in sync with output.py."""
+"""Keeps README.md's tables in sync with parser.py."""
 
 import re
 from dataclasses import fields
