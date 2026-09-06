@@ -273,16 +273,25 @@ def test_split_left_right_balance_noop_without_column():
     assert "right_balance" not in out.columns
 
 
+def test_split_left_right_balance_discards_out_of_range_percentage():
+    # An out-of-range percentage isn't a valid balance; discard it.
+    df = pd.DataFrame({"left_right_balance": [110]})
+    out = split_record_balance(df)
+    assert out["right_balance"].isna().all()
+    assert out["left_balance"].isna().all()
+
+
 def test_split_left_right_balance_decodes_enum_values():
     # Confirm the enum strings are recovered rather than crashing on cast.
     df = pd.DataFrame({"left_right_balance": ["right", "mask", 180]})
     out = split_record_balance(df)
-    assert out["right_balance"].tolist() == pytest.approx([0.0, -27.0, 52.0])
-    assert out["left_balance"].tolist() == pytest.approx([100.0, 127.0, 48.0])
+    nan = float("nan")
+    assert out["right_balance"].tolist() == pytest.approx([0.0, nan, 52.0], nan_ok=True)
+    assert out["left_balance"].tolist() == pytest.approx([100.0, nan, 48.0], nan_ok=True)
 
 
 def test_split_left_right_balance_decodes_enum_values_100():
-    # Same FIT profile issue, but for the lap/session/segment_lap uint16 layout.
+    # Same enum-string handling, for the lap/session/segment_lap uint16 layout.
     df = pd.DataFrame({"left_right_balance": ["right", "mask", 37968]})
     out = split_left_right_balance(
         df,
@@ -290,8 +299,9 @@ def test_split_left_right_balance_decodes_enum_values_100():
         percent_mask=LEFT_RIGHT_BALANCE_PERCENT_MASK_100,
         percent_scale=100.0,
     )
-    assert out["right_balance"].tolist() == pytest.approx([0.0, -63.83, 52.0])
-    assert out["left_balance"].tolist() == pytest.approx([100.0, 163.83, 48.0])
+    nan = float("nan")
+    assert out["right_balance"].tolist() == pytest.approx([0.0, nan, 52.0], nan_ok=True)
+    assert out["left_balance"].tolist() == pytest.approx([100.0, nan, 48.0], nan_ok=True)
 
 
 def test_gz_round_trip(tmp_path):
@@ -452,8 +462,9 @@ def test_activity_parser_left_right_balance_column_curation():
 def test_parse_fit_left_right_balance_enum_quirk_end_to_end():
     # Regression test: this used to crash ~12.7% of a real archive's FIT files.
     records, _, _ = parse_fit(io.BytesIO(synthetic_fit.left_right_balance_enum_quirk()))
-    assert records["right_balance"].tolist() == pytest.approx([0.0, -27.0, 52.0])
-    assert records["left_balance"].tolist() == pytest.approx([100.0, 127.0, 48.0])
+    nan = float("nan")
+    assert records["right_balance"].tolist() == pytest.approx([0.0, nan, 52.0], nan_ok=True)
+    assert records["left_balance"].tolist() == pytest.approx([100.0, nan, 48.0], nan_ok=True)
 
 
 def test_parse_fit_coercion_skips_column_with_non_numeric_value():
