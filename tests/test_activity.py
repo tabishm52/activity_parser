@@ -4,8 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from activity_parser.derive import fill_activity
-from activity_parser.output import Activity
+from activity_parser.activity import Activity, fill_activity
 from activity_parser.parse_tcx_gpx import parse_tcx
 
 FILES = Path(__file__).parent / "files"

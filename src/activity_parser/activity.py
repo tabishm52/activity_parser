@@ -1,11 +1,43 @@
-"""Fills an ``Activity``'s missing fields by aggregating its own records/laps."""
+"""Defines ``Activity``, a file-level summary across FIT, TCX, and GPX files.
+
+Also defines the logic for filling missing ``Activity`` fields by calculating from the
+file's records and laps.
+"""
 
 import dataclasses
+from dataclasses import dataclass
 from typing import Literal
 
 import pandas as pd
 
-from .output import Activity
+
+@dataclass(frozen=True)
+class Activity:
+    """File-level summary, present across FIT/TCX/GPX.
+
+    Fields are populated from the source file's summary fields where reported, or
+    calculated from records and laps where practical. Fields are ``None`` when neither
+    is available.
+    """
+
+    sport: str | None = None
+    start_time: pd.Timestamp | None = None
+    total_elapsed_time: float | None = None  # seconds
+    total_timer_time: float | None = None  # seconds, excludes paused time
+    total_distance: float | None = None  # km
+    total_ascent: float | None = None  # m
+    total_descent: float | None = None  # m
+    total_calories: float | None = None  # kcal
+    avg_heart_rate: float | None = None  # bpm
+    max_heart_rate: float | None = None  # bpm
+    avg_power: float | None = None  # W
+    max_power: float | None = None  # W
+    avg_cadence: float | None = None  # rpm
+    max_cadence: float | None = None  # rpm
+    avg_speed: float | None = None  # kph
+    max_speed: float | None = None  # kph
+    creator: str | None = None  # device/app that recorded or wrote the file
+    notes: str | None = None
 
 
 def _aggregate(
