@@ -10,7 +10,7 @@ import pytest
 import synthetic_fit
 
 from activity_parser import ActivityParser, FitError
-from activity_parser.parse_fit_file import (
+from activity_parser.parse_fit import (
     LEFT_RIGHT_BALANCE_PERCENT_MASK,
     LEFT_RIGHT_BALANCE_PERCENT_MASK_100,
     LEFT_RIGHT_BALANCE_RIGHT_FLAG,

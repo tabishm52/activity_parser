@@ -7,9 +7,62 @@ from typing import IO
 
 import pandas as pd
 
-from .output import DEFAULT_LAP_COLUMNS, DEFAULT_RECORD_COLUMNS, Activity
-from .parse_fit_file import parse_fit
+from .activity import Activity
+from .parse_fit import parse_fit
 from .parse_tcx_gpx import parse_gpx, parse_tcx
+
+DEFAULT_RECORD_COLUMNS: tuple[str, ...] = (
+    "latitude",
+    "longitude",
+    "altitude",
+    "distance",
+    "speed",
+    "cadence",
+    "heart_rate",
+    "power",
+    "left_balance",
+    "right_balance",
+    "accumulated_power",
+    "temperature",
+    "water_temperature",
+    "depth",
+    "course",
+    "bearing",
+)
+
+DEFAULT_LAP_COLUMNS: tuple[str, ...] = (
+    "start_time",
+    "total_elapsed_time",
+    "total_timer_time",
+    "start_position_lat",
+    "start_position_long",
+    "end_position_lat",
+    "end_position_long",
+    "total_distance",
+    "total_ascent",
+    "total_descent",
+    "avg_vam",
+    "avg_speed",
+    "max_speed",
+    "avg_cadence",
+    "max_cadence",
+    "total_strokes",
+    "steps",
+    "avg_heart_rate",
+    "max_heart_rate",
+    "time_in_hr_zone",
+    "avg_power",
+    "max_power",
+    "normalized_power",
+    "left_balance",
+    "right_balance",
+    "time_in_power_zone",
+    "total_work",
+    "avg_temperature",
+    "max_temperature",
+    "total_calories",
+    "total_fat_calories",
+)
 
 
 def select_and_reorder_cols(

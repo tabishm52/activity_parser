@@ -14,10 +14,9 @@ from typing import IO, TYPE_CHECKING, Any, cast
 import pandas as pd
 from garmin_fit_sdk import Decoder, Profile, Stream
 
-from .derive import fill_activity
+from .activity import Activity, fill_activity
 from .exceptions import FitError
 from .fit_fields import LAP_UNITS, RECORD_UNITS, SESSION_UNITS, convert_units, convert_units_mapping
-from .output import Activity
 from .postprocess import coerce_numeric_columns, index_by_time
 
 if TYPE_CHECKING:

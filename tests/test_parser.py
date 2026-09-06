@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from activity_parser import ActivityParser
-from activity_parser.parse_activity import (
+from activity_parser.parser import (
     infer_extension,
     normalize_extension,
     select_and_reorder_cols,

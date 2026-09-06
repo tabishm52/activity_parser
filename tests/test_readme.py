@@ -4,7 +4,8 @@ import re
 from dataclasses import fields
 from pathlib import Path
 
-from activity_parser.output import DEFAULT_LAP_COLUMNS, DEFAULT_RECORD_COLUMNS, Activity
+from activity_parser.activity import Activity
+from activity_parser.parser import DEFAULT_LAP_COLUMNS, DEFAULT_RECORD_COLUMNS
 
 README = Path(__file__).parent.parent / "README.md"
 COLUMN_NAME = re.compile(r"`(\w+)`")

@@ -14,9 +14,8 @@ from typing import IO, cast
 import pandas as pd
 from lxml import etree
 
-from .derive import fill_activity
+from .activity import Activity, fill_activity
 from .exceptions import XmlError
-from .output import Activity
 from .postprocess import index_by_time
 from .sports import normalize_sport
 from .xml_fields import (
