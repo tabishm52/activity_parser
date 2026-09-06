@@ -106,6 +106,8 @@ def split_left_right_balance(
     is_right = (present & right_flag) != 0
     percent = (present & percent_mask).astype(float) / percent_scale
     right = percent.where(is_right, 100 - percent)
+    # Discard an out-of-range balance.
+    right = right.where(right.between(0, 100))
 
     df = df.copy()
     df["left_balance"] = (100 - right).reindex(df.index)
