@@ -89,15 +89,23 @@ def test_parse_fit_renames_position_to_lat_long():
 
 def test_parse_fit_coalesces_enhanced_columns():
     records, laps, _ = parse_fit(EDGE_820)
-    assert (records["altitude"] == records["enhanced_altitude"]).all()
-    assert (laps["avg_speed"] == laps["enhanced_avg_speed"]).all()
-    assert (laps["max_speed"] == laps["enhanced_max_speed"]).all()
+    assert records["altitude"].iloc[0] == pytest.approx(-17.6)
+    assert records["speed"].iloc[0] == pytest.approx(25.0236)
+    assert laps["avg_speed"].iloc[0] == pytest.approx(25.5024)
+    assert laps["max_speed"].iloc[0] == pytest.approx(25.8984)
+    for col in ("enhanced_altitude", "enhanced_speed"):
+        assert col not in records.columns
+    for col in ("enhanced_avg_speed", "enhanced_max_speed"):
+        assert col not in laps.columns
 
 
 def test_parse_fit_combines_fractional_cadence():
-    _, laps, _ = parse_fit(EDGE_820)
+    records, laps, _ = parse_fit(EDGE_820)
     assert laps["avg_cadence"].iloc[0] == pytest.approx(68.320312)
     assert laps["max_cadence"].iloc[0] == pytest.approx(71.0)
+    assert "fractional_cadence" not in records.columns
+    for col in ("avg_fractional_cadence", "max_fractional_cadence"):
+        assert col not in laps.columns
 
 
 def test_parse_fenix_5_values():
@@ -163,18 +171,21 @@ def test_coalesce_enhanced_columns_prefers_enhanced_when_both_present():
     df = pd.DataFrame({"altitude": [100.0, 200.0], "enhanced_altitude": [105.0, 210.0]})
     out = coalesce_enhanced_columns(df, {"altitude": "enhanced_altitude"})
     assert list(out["altitude"]) == [105.0, 210.0]
+    assert "enhanced_altitude" not in out.columns
 
 
 def test_coalesce_enhanced_columns_falls_back_to_base_where_enhanced_is_null():
     df = pd.DataFrame({"speed": [10.0, 20.0], "enhanced_speed": [15.0, None]})
     out = coalesce_enhanced_columns(df, {"speed": "enhanced_speed"})
     assert list(out["speed"]) == [15.0, 20.0]
+    assert "enhanced_speed" not in out.columns
 
 
 def test_coalesce_enhanced_columns_fills_missing_base_column():
     df = pd.DataFrame({"enhanced_speed": [10.0, 20.0]})
     out = coalesce_enhanced_columns(df, {"speed": "enhanced_speed"})
     assert list(out["speed"]) == [10.0, 20.0]
+    assert "enhanced_speed" not in out.columns
 
 
 def test_coalesce_enhanced_columns_noop_without_enhanced_column():
@@ -212,18 +223,21 @@ def test_add_fractional_columns_sums_both_present():
     df = pd.DataFrame({"cadence": [90.0, 85.0], "fractional_cadence": [0.5, 0.25]})
     out = add_fractional_columns(df, {"cadence": "fractional_cadence"})
     assert out["cadence"].tolist() == pytest.approx([90.5, 85.25])
+    assert "fractional_cadence" not in out.columns
 
 
 def test_add_fractional_columns_treats_missing_fractional_value_as_zero():
     df = pd.DataFrame({"cadence": [90.0, 85.0], "fractional_cadence": [0.5, None]})
     out = add_fractional_columns(df, {"cadence": "fractional_cadence"})
     assert out["cadence"].tolist() == pytest.approx([90.5, 85.0])
+    assert "fractional_cadence" not in out.columns
 
 
 def test_add_fractional_columns_fills_missing_base_column():
     df = pd.DataFrame({"fractional_cadence": [0.5, 0.25]})
     out = add_fractional_columns(df, {"cadence": "fractional_cadence"})
     assert out["cadence"].tolist() == pytest.approx([0.5, 0.25])
+    assert "fractional_cadence" not in out.columns
 
 
 def test_add_fractional_columns_noop_without_fractional_column():
