@@ -189,6 +189,9 @@ def decode_fit(
     except (gzip.BadGzipFile, zlib.error, EOFError) as e:
         raise FitError(str(e)) from e
 
+    if not data:
+        raise FitError("Empty FIT file")
+
     messages, errors = Decoder(Stream.from_byte_array(data)).read(
         enable_crc_check=check_crc, merge_heart_rates=merge_heart_rates
     )
