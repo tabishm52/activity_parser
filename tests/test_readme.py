@@ -41,5 +41,5 @@ def test_readme_laps_table_matches_default_columns():
 
 def test_readme_activity_table_matches_dataclass_fields():
     text = README.read_text()
-    section = _section(text, "### Activity", "## Parser notes")
+    section = _section(text, "### Activity", "## Examples")
     assert _table_column_names(section) == [f.name for f in fields(Activity)]

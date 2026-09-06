@@ -221,7 +221,9 @@ def parse_tcx(
     etree.strip_elements(root, "{*}Track")
     laps = build_dataframe(root.iter("{*}Lap"), TCX_LAP_FIELDS)
 
-    activity = fill_activity(tcx_activity(root), records, laps)
+    activity = tcx_activity(root)
+    if len(root.findall(".//{*}Activity")) <= 1:
+        activity = fill_activity(activity, records, laps)
 
     return records, laps, activity
 
@@ -261,6 +263,8 @@ def parse_gpx(
     records = build_dataframe(root.iter("{*}trkpt"), GPX_TRACKPOINT_FIELDS)
     records = index_by_time(records, "time")
 
-    activity = fill_activity(gpx_activity(root), records, pd.DataFrame())
+    activity = gpx_activity(root)
+    if len(root.findall("{*}trk")) <= 1:
+        activity = fill_activity(activity, records, pd.DataFrame())
 
     return records, pd.DataFrame(), activity
