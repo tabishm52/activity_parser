@@ -59,12 +59,13 @@ LEFT_RIGHT_BALANCE_PERCENT_MASK_100 = 0x3FFF
 
 
 def coalesce_enhanced_columns(df: pd.DataFrame, pairs: Mapping[str, str]) -> pd.DataFrame:
-    """Prefers each enhanced FIT column's values over its base counterpart."""
+    """Prefers each enhanced FIT column's values over its base counterpart, then drops it."""
     df = df.copy()
     for base, enhanced in pairs.items():
         if enhanced not in df.columns:
             continue
         df[base] = df[enhanced].combine_first(df[base]) if base in df.columns else df[enhanced]
+        df = df.drop(columns=enhanced)
     return df
 
 
@@ -80,12 +81,13 @@ def coalesce_enhanced_mapping(row: Mapping[str, Any], pairs: Mapping[str, str]) 
 
 
 def add_fractional_columns(df: pd.DataFrame, pairs: Mapping[str, str]) -> pd.DataFrame:
-    """Adds each fractional-precision FIT column into its base counterpart."""
+    """Adds each fractional-precision FIT column into its base counterpart, then drops it."""
     df = df.copy()
     for base, fractional in pairs.items():
         if fractional not in df.columns:
             continue
         df[base] = df[base] + df[fractional].fillna(0) if base in df.columns else df[fractional]
+        df = df.drop(columns=fractional)
     return df
 
 
