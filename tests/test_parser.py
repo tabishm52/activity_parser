@@ -34,6 +34,11 @@ def test_infer_extension():
     assert infer_extension("dir/sub/ride.GPX.GZ") == "gpx"
 
 
+def test_infer_extension_bare_gz_rejected():
+    with pytest.raises(ValueError, match="Ambiguous"):
+        infer_extension("ride.gz")
+
+
 def test_select_and_reorder_cols_selects_and_orders():
     df = pd.DataFrame({"b": [1], "a": [2], "ignored": [3]})
     out = select_and_reorder_cols(df, ["a", "b", "missing"], include_all_columns=False)

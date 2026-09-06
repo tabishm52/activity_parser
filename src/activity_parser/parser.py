@@ -104,6 +104,8 @@ def infer_extension(file: str | PathLike[str]) -> str:
     ext = p.suffix
     if ext.lower() == ".gz":
         ext = Path(p.stem).suffix
+        if not ext:
+            ext = ".gz"
     return normalize_extension(ext)
 
 
