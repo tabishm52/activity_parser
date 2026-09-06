@@ -43,6 +43,7 @@ def index_by_time(records: pd.DataFrame, column: str) -> pd.DataFrame:
     if column not in records.columns:
         if not records.empty:
             return records.rename_axis(column)
+        records = records.copy()
         records[column] = pd.NaT
 
     records = records.set_index(column)

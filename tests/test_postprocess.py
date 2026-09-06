@@ -43,6 +43,12 @@ def test_index_by_time_missing_column_yields_empty_datetime_index():
     assert isinstance(out.index, pd.DatetimeIndex)
 
 
+def test_index_by_time_missing_column_and_empty_does_not_mutate_input():
+    df = pd.DataFrame({"value": []})
+    index_by_time(df, "time")
+    assert "time" not in df.columns
+
+
 def test_index_by_time_missing_column_with_rows_keeps_them():
     df = pd.DataFrame({"value": [1, 2, 3]})
     out = index_by_time(df, "time")
