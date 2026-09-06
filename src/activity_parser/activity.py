@@ -123,7 +123,7 @@ def fill_activity(activity: Activity, records: pd.DataFrame, laps: pd.DataFrame)
         "avg_power": _aggregate(records, "power", "mean"),
         "max_power": _aggregate(records, "power", "max"),
         "avg_cadence": _aggregate(records, "cadence", "mean", skip_zeros=True),
-        "max_cadence": _aggregate(records, "cadence", "max"),
+        "max_cadence": _aggregate(records, "cadence", "max", skip_zeros=True),
     }
 
     to_fill = {
