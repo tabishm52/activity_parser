@@ -335,6 +335,18 @@ def test_non_fit_bytes_raise():
         parse_fit(io.BytesIO(b"this is not a FIT file"))
 
 
+@pytest.mark.parametrize("parser", [parse_fit, parse_fit_raw])
+def test_zero_byte_file_raises(parser):
+    with pytest.raises(FitError, match="[Ee]mpty"):
+        parser(io.BytesIO(b""))
+
+
+@pytest.mark.parametrize("parser", [parse_fit, parse_fit_raw])
+def test_short_garbage_stub_raises(parser):
+    with pytest.raises(FitError, match="not a fit file"):
+        parser(io.BytesIO(b"\x00" * 13))
+
+
 @pytest.mark.parametrize(
     "corrupt_bytes",
     [
