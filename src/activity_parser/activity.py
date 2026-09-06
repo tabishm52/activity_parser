@@ -94,6 +94,9 @@ def fill_activity(activity: Activity, records: pd.DataFrame, laps: pd.DataFrame)
     A field the file itself reports is never overwritten; this only fills fields the
     file left ``None``. ``total_timer_time``, ``total_ascent`` and ``total_descent`` are
     not derived and are left as the file reported them, ``None`` included.
+
+    Should not be called for a file holding more than one activity, since the filled
+    fields would aggregate over all activities.
     """
     # Prefer sum of lap data, fall back to calculating from records
     total_elapsed_time = _coalesce(

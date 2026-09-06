@@ -314,7 +314,8 @@ def parse_fit(
     )
 
     activity = build_activity(convert_units_mapping(session or {}, SESSION_UNITS), file_id)
-    activity = fill_activity(activity, records, laps)
+    if len(messages.get("session", [])) <= 1:
+        activity = fill_activity(activity, records, laps)
 
     return records, laps, activity
 

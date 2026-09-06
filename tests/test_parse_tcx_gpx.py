@@ -227,6 +227,12 @@ def test_tcx_multi_activity_merges_records_and_laps_first_activity_wins_summary(
     assert laps["total_distance"].tolist() == pytest.approx([0.5, 1.0])
     assert activity.sport == "cycling"
     assert activity.start_time == pd.Timestamp("2026-01-05T08:00:00Z")
+    # Computed fields must not mix the two Activities' merged records/laps together.
+    assert activity.total_elapsed_time is None
+    assert activity.total_distance is None
+    assert activity.avg_heart_rate is None
+    assert activity.max_heart_rate is None
+    assert activity.avg_speed is None
 
 
 # ---------------------------------------------------------------------------
@@ -401,8 +407,10 @@ def test_gpx_1_0_base_fields():
 
 def test_gpx_multiple_tracks_merged():
     # Two separate <trk> elements, unlike multi_segment.gpx's two <trkseg> in one.
-    records, _, _ = ActivityParser().parse(MULTI_TRACK_GPX)
+    records, _, activity = ActivityParser().parse(MULTI_TRACK_GPX)
     assert records["latitude"].tolist() == pytest.approx([37.0, 37.5])
+    # Not derived from the merged records' time span.
+    assert activity.total_elapsed_time is None
 
 
 # ---------------------------------------------------------------------------

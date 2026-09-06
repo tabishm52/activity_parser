@@ -402,6 +402,9 @@ def test_parse_fit_multi_session_uses_first_session_and_file_id():
     assert activity.sport == "running"
     assert activity.total_elapsed_time == 60.0
     assert activity.creator == "garmin 1111"
+    # Nothing from the second session leaks in.
+    assert activity.total_distance is None
+    assert activity.avg_heart_rate is None
 
 
 def test_parse_fit_chained_files(tmp_path):
