@@ -31,6 +31,8 @@ RUNNING_TCX = TCX_FILES / "running.tcx"
 CADENCE_COLLISION_TCX = TCX_FILES / "cadence_collision.tcx"
 UNKNOWN_COLLISION_TCX = TCX_FILES / "unknown_collision.tcx"
 MIXED_CONTENT_TCX = TCX_FILES / "mixed_content.tcx"
+DIRECT_TEXT_TCX = TCX_FILES / "direct_text.tcx"
+DIRECT_TEXT_GPX = GPX_FILES / "direct_text.gpx"
 VENDOR_TYPE_ATTRIBUTE_TCX = TCX_FILES / "vendor_type_attribute.tcx"
 DUPLICATE_CADENCE_TCX = TCX_FILES / "duplicate_cadence.tcx"
 LAPS_ONLY_TCX = TCX_FILES / "laps_only.tcx"
@@ -389,6 +391,15 @@ def test_gpx_unknown_extension_kept_as_namespaced_string():
     assert column not in normalized.columns
 
 
+def test_gpx_direct_text_on_trkpt_is_skipped():
+    # Text directly inside trkpt itself used to raise IndexError.
+    records, _, _ = parse_gpx(DIRECT_TEXT_GPX)
+    assert records["latitude"].tolist() == pytest.approx([37.0000])
+    assert records["longitude"].tolist() == pytest.approx([-122.0000])
+    assert records["altitude"].tolist() == [10.0]
+    assert not records.isin(["stray-trkpt-text"]).any().any()
+
+
 def test_gpx_1_0_base_fields():
     # GPX 1.0 exposes course/speed directly; GPS-fix diagnostics aren't fitness data.
     records, _, _ = ActivityParser().parse(GPX10)
@@ -491,6 +502,16 @@ def test_tcx_mixed_content_keeps_both_text_and_child():
     ns = "http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2"
     assert records[f"{{{ns}}}Weird"].tolist() == ["leaf-text-here"]
     assert records[f"{{{ns}}}Nested"].tolist() == ["should-not-be-lost"]
+
+
+def test_tcx_direct_text_on_lap_and_trackpoint_is_skipped():
+    # Text directly inside Lap/Trackpoint themselves used to raise IndexError.
+    records, laps, _ = parse_tcx(DIRECT_TEXT_TCX)
+    assert records["altitude"].tolist() == [10.0]
+    assert laps["total_elapsed_time"].tolist() == [1.0]
+    assert laps["total_distance"].tolist() == pytest.approx([0.005])
+    assert not records.isin(["stray-trackpoint-text"]).any().any()
+    assert not laps.isin(["stray-lap-text"]).any().any()
 
 
 def test_tcx_type_attribute_only_skipped_for_xsi_namespace():

@@ -92,7 +92,7 @@ def walk_fields(element: etree._Element) -> Iterator[tuple[FieldPath, str]]:
     """Yields (path, value) for every attribute and leaf element under ``element``.
 
     ``path`` matches the keys of the field tables in ``xml_fields``. XML comments are
-    skipped.
+    skipped. ``path`` is never empty.
     """
     yield from _walk(element, ())
 
@@ -116,7 +116,7 @@ def _walk(element: etree._Element, path: FieldPath) -> Iterator[tuple[FieldPath,
         yield path + ((namespace, "@" + localname),), cast(str, value)
 
     text = element.text
-    if text is not None and not text.isspace():
+    if path and text is not None and not text.isspace():
         yield path, text
     # "*" matches only true elements, so comments are skipped without special-casing.
     for child in element.iterchildren("*"):
