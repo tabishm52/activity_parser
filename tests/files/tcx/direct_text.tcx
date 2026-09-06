@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Text directly inside the Lap and Trackpoint elements themselves, not a child's text.
+     Both used to raise IndexError; both must be skipped without dropping the fields
+     around them. -->
+<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2">
+  <Activities>
+    <Activity Sport="Biking">
+      <Id>2026-01-05T08:00:00Z</Id>
+      <Lap StartTime="2026-01-05T08:00:00Z">stray-lap-text
+        <TotalTimeSeconds>1.0</TotalTimeSeconds>
+        <DistanceMeters>5.0</DistanceMeters>
+        <Track>
+          <Trackpoint>stray-trackpoint-text
+            <Time>2026-01-05T08:00:00Z</Time>
+            <AltitudeMeters>10.0</AltitudeMeters>
+          </Trackpoint>
+        </Track>
+      </Lap>
+    </Activity>
+  </Activities>
+</TrainingCenterDatabase>
