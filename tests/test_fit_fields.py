@@ -150,3 +150,29 @@ def test_convert_units_mapping_ignores_absent_and_non_numeric_values():
     out = convert_units_mapping(row, SESSION_UNITS)
     assert out == row
     assert "total_distance" not in out
+
+
+@pytest.mark.parametrize(
+    ("field", "raw", "expected"),
+    [
+        ("nec_lat", 2**29, 45.0),
+        ("nec_long", 2**30, 90.0),
+        ("swc_lat", -(2**29), -45.0),
+        ("swc_long", -(2**30), -90.0),
+        ("avg_grade_adjusted_speed", 10.0, 36.0),
+    ],
+)
+def test_convert_units_normalizes_additional_lap_fields(field, raw, expected):
+    source = pd.DataFrame({field: [raw, None]})
+    result = convert_units(source, LAP_UNITS)
+    assert result[field].iloc[0] == pytest.approx(expected)
+    assert pd.isna(result[field].iloc[1])
+    assert source[field].iloc[0] == raw
+
+
+def test_convert_units_mapping_normalizes_grade_adjusted_session_speed():
+    source = {"avg_grade_adjusted_speed": 10.0, "avg_vam": 1.5}
+    result = convert_units_mapping(source, SESSION_UNITS)
+    assert result["avg_grade_adjusted_speed"] == pytest.approx(36.0)
+    assert result["avg_vam"] == 1.5
+    assert source["avg_grade_adjusted_speed"] == 10.0

@@ -765,3 +765,34 @@ def test_parse_fit_leaves_developer_fields_unconverted():
     records, _, _ = parse_fit(DEVELOPER_DATA)
     assert records["doughnuts_earned"].iloc[0] == 1
     assert records["speed"].iloc[0] == pytest.approx(170.9568)
+
+
+def test_fit_lap_bounds_and_grade_adjusted_speed_are_normalized():
+    payload = synthetic_fit.encode(
+        [
+            {
+                "mesg_num": synthetic_fit.LAP_MESG_NUM,
+                "timestamp": synthetic_fit.at(60),
+                "start_time": synthetic_fit.T0,
+                "nec_lat": 2**29,
+                "nec_long": 2**30,
+                "swc_lat": -(2**29),
+                "swc_long": -(2**30),
+                "avg_grade_adjusted_speed": 10.0,
+            }
+        ]
+    )
+    _, laps, _ = ActivityParser(include_all_columns=True).parse(io.BytesIO(payload), "fit")
+    for field, expected in {
+        "nec_lat": 45.0,
+        "nec_long": 90.0,
+        "swc_lat": -45.0,
+        "swc_long": -90.0,
+        "avg_grade_adjusted_speed": 36.0,
+    }.items():
+        assert laps[field].iloc[0] == pytest.approx(expected)
+
+    # Raw parsing intentionally keeps native FIT units.
+    raw = parse_fit_raw(io.BytesIO(payload))["lap"]
+    assert raw["nec_lat"].iloc[0] == 2**29
+    assert raw["avg_grade_adjusted_speed"].iloc[0] == 10.0

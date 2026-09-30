@@ -32,6 +32,11 @@ RECORD_UNITS: dict[str, float] = {
 }
 
 LAP_UNITS: dict[str, float] = {
+    "nec_lat": SEMICIRCLES_TO_DEGREES,
+    "nec_long": SEMICIRCLES_TO_DEGREES,
+    "swc_lat": SEMICIRCLES_TO_DEGREES,
+    "swc_long": SEMICIRCLES_TO_DEGREES,
+    "avg_grade_adjusted_speed": MPS_TO_KMH,
     "end_position_lat": SEMICIRCLES_TO_DEGREES,
     "end_position_long": SEMICIRCLES_TO_DEGREES,
     "start_position_lat": SEMICIRCLES_TO_DEGREES,
@@ -45,6 +50,7 @@ LAP_UNITS: dict[str, float] = {
 }
 
 SESSION_UNITS: dict[str, float] = {
+    "avg_grade_adjusted_speed": MPS_TO_KMH,
     "end_position_lat": SEMICIRCLES_TO_DEGREES,
     "end_position_long": SEMICIRCLES_TO_DEGREES,
     "nec_lat": SEMICIRCLES_TO_DEGREES,
