@@ -60,7 +60,6 @@ time
 A few notes on column handling:
 
 - Column names and units are standardized across source formats for known field types.
-- With `include_all_columns=True`, FIT lap bounding coordinates (`nec_lat`, `nec_long`, `swc_lat`, `swc_long`) are normalized to degrees, and `avg_grade_adjusted_speed` is normalized to km/h. Raw FIT parsing preserves native units.
 - Unknown fields are omitted by default; customize columns via `record_columns`, `lap_columns`, and `include_all_columns` on `ActivityParser` — see its docstring for details.
 - Not every column appears in every file: `parse()` only includes columns actually present.
 
