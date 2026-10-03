@@ -4,7 +4,7 @@ FIT stores positions in semicircles, distances in meters and speeds in m/s. This
 package normalizes those to degrees, km and km/h. Vertical rates (``avg_vam``,
 ``vertical_speed``, ...) are left in m/s.
 
-The tables are transcribed from the FIT profile in garmin-fit-sdk 21.212.0, covering
+The tables are transcribed from the FIT profile in garmin-fit-sdk 21.217.0, covering
 the ``record``, ``lap`` and ``session`` message types. ``tests/test_fit_fields.py``
 checks that the installed profile's fields are covered.
 """
@@ -34,10 +34,15 @@ RECORD_UNITS: dict[str, float] = {
 LAP_UNITS: dict[str, float] = {
     "end_position_lat": SEMICIRCLES_TO_DEGREES,
     "end_position_long": SEMICIRCLES_TO_DEGREES,
+    "nec_lat": SEMICIRCLES_TO_DEGREES,
+    "nec_long": SEMICIRCLES_TO_DEGREES,
     "start_position_lat": SEMICIRCLES_TO_DEGREES,
     "start_position_long": SEMICIRCLES_TO_DEGREES,
+    "swc_lat": SEMICIRCLES_TO_DEGREES,
+    "swc_long": SEMICIRCLES_TO_DEGREES,
     "avg_stroke_distance": M_TO_KM,
     "total_distance": M_TO_KM,
+    "avg_grade_adjusted_speed": MPS_TO_KMH,
     "avg_speed": MPS_TO_KMH,
     "enhanced_avg_speed": MPS_TO_KMH,
     "enhanced_max_speed": MPS_TO_KMH,
@@ -56,6 +61,7 @@ SESSION_UNITS: dict[str, float] = {
     "avg_stroke_distance": M_TO_KM,
     "total_distance": M_TO_KM,
     "avg_ball_speed": MPS_TO_KMH,
+    "avg_grade_adjusted_speed": MPS_TO_KMH,
     "avg_speed": MPS_TO_KMH,
     "enhanced_avg_speed": MPS_TO_KMH,
     "enhanced_max_speed": MPS_TO_KMH,
